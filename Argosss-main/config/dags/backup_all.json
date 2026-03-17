@@ -1,0 +1,19 @@
+{
+  "description": "Полное резервное копирование",
+  "nodes": [
+    {
+      "id": "replicate",
+      "func": "replicate"
+    },
+    {
+      "id": "notify",
+      "func": "telegram_notify"
+    }
+  ],
+  "edges": [
+    {
+      "from": "replicate",
+      "to": "notify"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  argos_node:
+    build: .
+    container_name: argos_child_node
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - USER_ID=${USER_ID}
+      - MODE=server
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config
+    network_mode: "host"
+    restart: always

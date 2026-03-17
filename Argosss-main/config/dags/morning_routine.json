@@ -1,0 +1,35 @@
+{
+  "description": "Утренний чекап системы",
+  "nodes": [
+    {
+      "id": "status",
+      "func": "status"
+    },
+    {
+      "id": "crypto",
+      "func": "crypto"
+    },
+    {
+      "id": "digest",
+      "func": "digest"
+    },
+    {
+      "id": "notify",
+      "func": "telegram_notify"
+    }
+  ],
+  "edges": [
+    {
+      "from": "status",
+      "to": "notify"
+    },
+    {
+      "from": "crypto",
+      "to": "notify"
+    },
+    {
+      "from": "digest",
+      "to": "notify"
+    }
+  ]
+}

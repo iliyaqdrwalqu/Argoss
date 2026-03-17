@@ -1,0 +1,14 @@
+name: content_gen
+display_name: "Контент-генератор"
+version: "1.3.0"
+description: "AI-дайджест и публикация в Telegram"
+author: "Аргос / Всеволод"
+entry: "skill.py"
+permissions: ['network', 'telegram']
+dependencies: ['requests', 'beautifulsoup4']
+entry_class: ContentGen
+lifecycle:
+  on_load: true
+  on_unload: true
+  on_update: true
+  health_check: true

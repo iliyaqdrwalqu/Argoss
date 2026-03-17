@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARGOS WEBFACE v1.33</title>
+    <style>
+        body { background: #000; margin: 0; overflow: hidden; font-family: monospace; }
+        #matrix { position: absolute; top: 0; left: 0; opacity: 0.4; }
+        #ui { position: relative; z-index: 10; color: #00FF41; padding: 50px; }
+        .orb {
+            width: 80px; height: 80px;
+            background: radial-gradient(circle, #00F2FF, transparent);
+            border-radius: 50%;
+            box-shadow: 0 0 50px #8B5CF6;
+            animation: pulse 2s infinite;
+            will-change: transform;
+            display: inline-block;
+        }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        #console {
+            margin-top: 15px;
+            max-height: 240px;
+            overflow-y: auto;
+            border: 1px solid #00FF41;
+            padding: 10px;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        #status {
+            margin: 8px 0;
+            font-size: 13px;
+            color: #00F2FF;
+        }
+        h1 { margin: 10px 0 4px; font-size: 20px; }
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 8px;
+            margin: 12px 0;
+        }
+        .cmd-btn {
+            background: rgba(0,255,65,0.08);
+            border: 1px solid #00FF41;
+            color: #00FF41;
+            font-family: monospace;
+            font-size: 12px;
+            padding: 7px 6px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .cmd-btn:hover { background: rgba(0,255,65,0.25); }
+        #cmd-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        #cmd-input {
+            flex: 1;
+            background: #001100;
+            border: 1px solid #00FF41;
+            color: #00FF41;
+            font-family: monospace;
+            font-size: 13px;
+            padding: 6px 10px;
+            outline: none;
+        }
+        #cmd-send {
+            background: #003300;
+            border: 1px solid #00FF41;
+            color: #00FF41;
+            font-family: monospace;
+            padding: 6px 14px;
+            cursor: pointer;
+        }
+        #cmd-send:hover { background: #005500; }
+    </style>
+</head>
+<body>
+    <!-- ✅ ИСПРАВЛЕНИЕ 5: canvas не имел явных width/height в HTML — 
+         JS задавал их после рендера, что вызывало мерцание при загрузке -->
+    <canvas id="matrix" style="display:block;"></canvas>
+    <div id="ui">
+        <div class="orb" id="orb"></div>
+        <h1>🔱 ARGOS ABSOLUTE v1.33</h1>
+        <div id="status">STATUS: CONNECTING...</div>
+
+        <div class="btn-grid">
+            <button class="cmd-btn" onclick="sendCmd('nfc')">📡 NFC</button>
+            <button class="cmd-btn" onclick="sendCmd('bt')">🔵 BT</button>
+            <button class="cmd-btn" onclick="sendCmd('wifi')">📶 WIFI</button>
+            <button class="cmd-btn" onclick="sendCmd('root')">🛡️ ROOT</button>
+            <button class="cmd-btn" onclick="sendCmd('gps')">🗺️ GPS</button>
+            <button class="cmd-btn" onclick="sendCmd('build apk')">🏗️ APK</button>
+            <button class="cmd-btn" onclick="sendCmd('build firmware')">🔧 FIRMWARE</button>
+            <button class="cmd-btn" onclick="sendCmd('model status')">🤖 MODEL</button>
+            <button class="cmd-btn" onclick="sendCmd('model update')">🔄 UPDATE</button>
+            <button class="cmd-btn" onclick="sendCmd('mesh start')">🌐 MESH</button>
+            <button class="cmd-btn" onclick="sendCmd('mesh stop')">🌐 MESH ✖</button>
+            <button class="cmd-btn" onclick="sendCmd('mesh status')">🌐 MESH ℹ️</button>
+            <button class="cmd-btn" onclick="sendCmd('colibri start')">🐦 COLIBRI</button>
+            <button class="cmd-btn" onclick="sendCmd('colibri status')">🐦 COLIBRI ℹ️</button>
+            <button class="cmd-btn" onclick="sendCmd('network scan')">🔎 SCAN</button>
+            <button class="cmd-btn" onclick="sendCmd('docker node')">🐳 DOCKER</button>
+            <button class="cmd-btn" onclick="sendCmd('xen status')">⚙️ XEN</button>
+            <button class="cmd-btn" onclick="sendCmd('integrator')">🔌 MODULES</button>
+            <button class="cmd-btn" onclick="sendCmd('status')">📊 STATUS</button>
+            <button class="cmd-btn" onclick="sendCmd('help')">❓ HELP</button>
+        </div>
+
+        <div id="cmd-row">
+            <input id="cmd-input" placeholder="Введите команду..." onkeydown="if(event.key==='Enter')sendCmd(this.value)" />
+            <button id="cmd-send" onclick="sendCmd(document.getElementById('cmd-input').value)">▶ RUN</button>
+        </div>
+
+        <div id="console">> Initializing ARGOS Web Node v1.33...</div>
+    </div>
+    <script>
+        // ── МАТРИЧНЫЙ ФОН ─────────────────────────────────────────
+        const canvas = document.getElementById('matrix');
+        const ctx = canvas.getContext('2d');
+
+        // ✅ ИСПРАВЛЕНИЕ 6: Размер canvas не обновлялся при ресайзе окна — 
+        //    матрица "замерзала" при изменении размера браузера
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ🔱⚛️📡";
+        // ✅ ИСПРАВЛЕНИЕ 7: drops пересчитывался один раз при загрузке —
+        //    после ресайза количество колонок не обновлялось (артефакты/пустые области)
+        let drops = [];
+        function initDrops() {
+            drops = Array(Math.floor(canvas.width / 20)).fill(1);
+        }
+        initDrops();
+        window.addEventListener('resize', initDrops);
+
+        function draw() {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#00FF41";
+            ctx.font = "15px monospace";
+            drops.forEach((y, i) => {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                ctx.fillText(text, i * 20, y * 20);
+                if (y * 20 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            });
+        }
+        // ✅ ИСПРАВЛЕНИЕ 8: setInterval не очищался — при hot-reload в Colab
+        //    запускались множественные таймеры, замедляя страницу.
+        //    Заменено на requestAnimationFrame с throttle для плавности.
+        let lastTime = 0;
+        function animLoop(ts) {
+            if (ts - lastTime > 50) {   // ~20 fps, как было в оригинале
+                draw();
+                lastTime = ts;
+            }
+            requestAnimationFrame(animLoop);
+        }
+        requestAnimationFrame(animLoop);
+
+        // ── ПОДКЛЮЧЕНИЕ К ARGOS API ───────────────────────────────
+        const consoleEl = document.getElementById('console');
+        const statusEl  = document.getElementById('status');
+        const BASE      = window.location.origin;
+
+        function log(msg) {
+            consoleEl.textContent += '\n> ' + msg;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        async function checkStatus() {
+            try {
+                const res = await fetch(BASE + '/api/status', { signal: AbortSignal.timeout(3000) });
+                if (res.ok) {
+                    const data = await res.json();
+                    statusEl.textContent = `STATUS: ONLINE | v${data.version} | Node: ${data.node} | Up: ${data.uptime}`;
+                    statusEl.style.color = '#00FF41';
+                } else {
+                    throw new Error('Non-OK response');
+                }
+            } catch (e) {
+                statusEl.textContent = 'STATUS: API OFFLINE (standalone mode)';
+                statusEl.style.color = '#FF4444';
+            }
+        }
+
+        async function sendCmd(cmd) {
+            cmd = (cmd || '').trim();
+            if (!cmd) return;
+            document.getElementById('cmd-input').value = '';
+            log('→ ' + cmd);
+            try {
+                const res = await fetch(BASE + '/api/cmd/' + encodeURIComponent(cmd), { signal: AbortSignal.timeout(30000) });
+                if (res.ok) {
+                    const data = await res.json();
+                    log(data.result || '(нет ответа)');
+                } else {
+                    log('HTTP ' + res.status);
+                }
+            } catch (e) {
+                log('⚠️ API недоступен. Команда: ' + cmd);
+            }
+        }
+
+        // Статус каждые 10 с
+        checkStatus();
+        setInterval(checkStatus, 10000);
+
+        log('Web interface initialized');
+        log('Matrix renderer active');
+    </script>
+</body>
+</html>

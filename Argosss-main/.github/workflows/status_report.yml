@@ -1,0 +1,119 @@
+name: 📊 ARGOS Status Report
+
+# Генерирует полный отчёт о рабочем состоянии системы ARGOS.
+# Запускается:
+#   - вручную через UI GitHub (workflow_dispatch)
+#   - по расписанию: каждый день в 9:00 UTC
+#   - после успешной APK-сборки
+
+on:
+  workflow_dispatch:
+    inputs:
+      format:
+        description: 'Формат отчёта'
+        required: false
+        default: 'markdown'
+        type: choice
+        options:
+          - markdown
+          - json
+          - console
+
+  schedule:
+    # Ежедневно в 9:00 UTC
+    - cron: '0 9 * * *'
+
+  workflow_run:
+    workflows: ['🏗️ Build ARGOS APK']
+    types: [completed]
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  report:
+    name: Generate Status Report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install report dependencies
+        run: |
+          pip install --quiet --upgrade pip
+          # Устанавливаем только то, что нужно для отчёта
+          pip install --quiet pyyaml
+
+      - name: Install project dependencies (best-effort)
+        run: |
+          pip install --quiet -r requirements.txt || true
+
+      - name: Determine report format
+        id: fmt
+        run: |
+          FMT="${{ github.event.inputs.format }}"
+          if [ -z "$FMT" ]; then
+            FMT="markdown"
+          fi
+          echo "format=$FMT" >> $GITHUB_OUTPUT
+          echo "Формат отчёта: $FMT"
+
+      - name: Run status report (console preview)
+        run: python status_report.py
+
+      - name: Run status report (Markdown)
+        if: steps.fmt.outputs.format == 'markdown' || steps.fmt.outputs.format == ''
+        run: python status_report.py --md --out status_report.md
+
+      - name: Run status report (JSON)
+        if: steps.fmt.outputs.format == 'json'
+        run: python status_report.py --json --out status_report.json
+
+      - name: Publish Markdown to GitHub Actions Summary
+        if: steps.fmt.outputs.format != 'json'
+        run: |
+          if [ -f status_report.md ]; then
+            cat status_report.md >> $GITHUB_STEP_SUMMARY
+          else
+            python status_report.py --md >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Publish JSON to GitHub Actions Summary
+        if: steps.fmt.outputs.format == 'json'
+        run: |
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat status_report.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Markdown report as artifact
+        if: always() && steps.fmt.outputs.format != 'json'
+        uses: actions/upload-artifact@v5
+        with:
+          name: argos-status-report-md-${{ github.run_number }}
+          path: status_report.md
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload JSON report as artifact
+        if: always() && steps.fmt.outputs.format == 'json'
+        uses: actions/upload-artifact@v5
+        with:
+          name: argos-status-report-json-${{ github.run_number }}
+          path: status_report.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Fail if critical errors found
+        run: |
+          # Перезапускаем скрипт чтобы получить код возврата
+          python status_report.py
+        # Статус шага отражает общий результат проверки

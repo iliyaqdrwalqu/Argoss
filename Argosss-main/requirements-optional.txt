@@ -1,0 +1,63 @@
+# =======================================================================
+# ARGOS — ОПЦИОНАЛЬНЫЕ ЗАВИСИМОСТИ
+# =======================================================================
+# Устанавливайте только те разделы, которые нужны для вашего сценария.
+#
+# Быстрая установка всего раздела:
+#   pip install -r requirements-optional.txt
+#
+# Установка конкретного раздела — скопируйте нужные строки.
+# =======================================================================
+
+# ── Компьютерное зрение (src/vision.py, src/icon_generator.py)
+opencv-python>=4.9.0
+pyautogui>=0.9.54
+
+# ── Браузерный канал (src/skills/browser_conduit.py)
+pyperclip>=1.8.0
+
+# ── Дополнительное распознавание речи / wake-word
+pvporcupine>=3.0.0              # Wake-word (требует ключ PicoVoice)
+
+# ── Мобильный интерфейс Kivy (kivy_gui.py, src/interface/kivy_*.py)
+kivy>=2.3.0
+plyer>=2.1.0                    # Уведомления Android/iOS
+
+# ── Android-биндинги (src/connectivity/android_service.py)
+# pyjnius>=1.6.0                # Только в среде Kivy/Buildozer
+
+# ── Raspberry Pi GPIO (src/modules/biosphere_tools.py)
+# RPi.GPIO>=0.7.0               # Только на Raspberry Pi Linux
+
+# ── Встроенный I²C / SMBus (src/connectivity/power_sentry.py)
+# smbus2>=0.4.3                 # Уже перенесён в основной requirements.txt
+
+# ── Прошивки / реверс-инжиниринг (colibri_daemon.py, src/firmware_builder.py)
+capstone>=5.0.3                 # Дизассемблер
+keystone-engine>=0.9.2          # Ассемблер
+
+# ── Сетевой мониторинг / SDR
+scapy>=2.5.0                    # Анализ сетевых пакетов (src/connectivity/wifi_sentinel.py)
+pyrtlsdr>=0.3.0                 # SDR-приёмник (src/connectivity/air_snitch.py)
+
+# ── Промышленные протоколы (industrial_protocols.py)
+xknx>=3.1.0                     # KNX умный дом
+opcua>=0.98.13                  # OPC UA
+python-mbus>=0.9                 # M-Bus теплосчётчики
+
+# ── Квантовые вычисления (src/quantum/ibm_bridge.py, src/quantum/oracle.py)
+qiskit>=1.1.0
+qiskit-aer>=0.14.0
+qiskit-ibm-runtime>=0.23.0
+
+# ── Блокчейн TON (src/life_support_v2.py)
+tonsdk>=1.0.16
+
+# ── Фоновый демон (colibri_daemon.py, src/connectivity/colibri_daemon.py)
+python-daemon>=2.3.2
+
+# ── Облачное хранилище AWS (src/connectivity/cloud_object_storage.py)
+# boto3 уже перенесён в основной requirements.txt
+
+# ── Тестирование (dev)
+# pytest уже перенесён в основной requirements.txt

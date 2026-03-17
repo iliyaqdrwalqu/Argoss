@@ -1,0 +1,19 @@
+site_name: ARGOS Universal OS Docs
+site_description: Документация ARGOS — user/developer guide и философия проекта
+site_url: https://example.com/argos-docs
+repo_name: sigtrip/v1-3
+repo_url: https://github.com/sigtrip/v1-3
+
+theme:
+  name: mkdocs
+
+nav:
+  - Главная: index.md
+  - User Guide:
+      - Запуск и установка: user-guide/quickstart.md
+      - Повседневное использование: user-guide/usage.md
+  - Developer Guide:
+      - Плагины и навыки: developer-guide/skills.md
+  - Philosophy:
+      - Цифровое бессмертие: philosophy/digital-immortality.md
+      - Квантовое управление: philosophy/quantum-governance.md
