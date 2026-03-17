@@ -190,5 +190,117 @@ class TestHandleBrowserQuery(unittest.TestCase):
         self.assertEqual(call_order, ["monitor", "send"])
 
 
+class TestBrowserConduitHandshake(unittest.TestCase):
+    """Тесты методов рукопожатия BrowserConduit."""
+
+    def setUp(self):
+        self.conduit = BrowserConduit()
+
+    # ------------------------------------------------------------------
+    # _get_quantum_state
+    # ------------------------------------------------------------------
+
+    def test_get_quantum_state_returns_stub_when_module_missing(self):
+        """_get_quantum_state возвращает заглушку, если quantum.core недоступен."""
+        result = self.conduit._get_quantum_state()
+        self.assertEqual(result, "ENTANGLED|0.815")
+
+    def test_get_quantum_state_uses_real_module_when_available(self):
+        """_get_quantum_state использует quantum.core.get_state, если модуль доступен."""
+        fake_module = MagicMock()
+        fake_module.get_state.return_value = "SUPERPOSED|0.999"
+        with patch.dict("sys.modules", {"quantum": fake_module, "quantum.core": fake_module}):
+            result = self.conduit._get_quantum_state()
+        fake_module.get_state.assert_called_once()
+        self.assertEqual(result, "SUPERPOSED|0.999")
+
+    # ------------------------------------------------------------------
+    # _get_peers_count
+    # ------------------------------------------------------------------
+
+    def test_get_peers_count_returns_stub_when_module_missing(self):
+        """_get_peers_count возвращает 3, если p2p.node недоступен."""
+        result = self.conduit._get_peers_count()
+        self.assertEqual(result, 3)
+
+    def test_get_peers_count_uses_real_module_when_available(self):
+        """_get_peers_count использует p2p.node.get_connected_peers_count, если доступен."""
+        fake_module = MagicMock()
+        fake_module.get_connected_peers_count.return_value = 7
+        with patch.dict("sys.modules", {"p2p": fake_module, "p2p.node": fake_module}):
+            result = self.conduit._get_peers_count()
+        fake_module.get_connected_peers_count.assert_called_once()
+        self.assertEqual(result, 7)
+
+    # ------------------------------------------------------------------
+    # _build_handshake
+    # ------------------------------------------------------------------
+
+    def test_build_handshake_contains_required_markers(self):
+        """_build_handshake должен содержать обязательные поля заголовка."""
+        hs = self.conduit._build_handshake()
+        self.assertIn("[ARGOS_HANDSHAKE_V1.4.0]", hs)
+        self.assertIn("AWA-Active", hs)
+        self.assertIn("IDENT: Origin/Vsevolod/2026", hs)
+        self.assertIn("OBJECTIVE:", hs)
+
+    def test_build_handshake_includes_quantum_state(self):
+        """_build_handshake включает квантовое состояние в строку STATUS."""
+        self.conduit._get_quantum_state = MagicMock(return_value="TEST_STATE")
+        self.conduit._get_peers_count = MagicMock(return_value=5)
+        hs = self.conduit._build_handshake()
+        self.assertIn("TEST_STATE", hs)
+
+    def test_build_handshake_includes_peers_count(self):
+        """_build_handshake включает количество P2P-узлов."""
+        self.conduit._get_quantum_state = MagicMock(return_value="STATE")
+        self.conduit._get_peers_count = MagicMock(return_value=42)
+        hs = self.conduit._build_handshake()
+        self.assertIn("P2P_NODES: 42", hs)
+
+    # ------------------------------------------------------------------
+    # send
+    # ------------------------------------------------------------------
+
+    def test_send_prepends_handshake_on_first_call(self):
+        """send() должен добавить рукопожатие перед первым сообщением."""
+        sent = []
+        self.conduit._send_raw = lambda msg, delay=5: sent.append(msg)
+        self.conduit.send("привет")
+        self.assertEqual(len(sent), 1)
+        self.assertIn("[ARGOS_HANDSHAKE_V1.4.0]", sent[0])
+        self.assertIn("привет", sent[0])
+
+    def test_send_no_handshake_on_subsequent_calls(self):
+        """send() не должен повторять рукопожатие при последующих вызовах."""
+        sent = []
+        self.conduit._send_raw = lambda msg, delay=5: sent.append(msg)
+        self.conduit.send("первый")
+        self.conduit.send("второй")
+        self.assertNotIn("[ARGOS_HANDSHAKE_V1.4.0]", sent[1])
+        self.assertEqual(sent[1], "второй")
+
+    def test_send_sets_handshake_sent_flag(self):
+        """После первого вызова send() флаг _handshake_sent должен стать True."""
+        self.conduit._send_raw = MagicMock()
+        self.assertFalse(self.conduit._handshake_sent)
+        self.conduit.send("тест")
+        self.assertTrue(self.conduit._handshake_sent)
+
+    def test_send_initial_flag_is_false(self):
+        """Флаг _handshake_sent должен быть False сразу после создания объекта."""
+        fresh = BrowserConduit()
+        self.assertFalse(fresh._handshake_sent)
+
+    def test_send_raw_delegates_to_send_to_browser(self):
+        """_send_raw должен вызывать send_to_browser с тем же сообщением."""
+        _pyautogui_mock.reset_mock()
+        _pyperclip_mock.reset_mock()
+        with patch.multiple(bc_module, PYAUTOGUI_OK=True, PYPERCLIP_OK=True), \
+             patch("time.sleep"):
+            self.conduit._send_raw("тест сообщение", delay=0)
+        _pyperclip_mock.copy.assert_called_once_with("тест сообщение")
+
+
 if __name__ == "__main__":
     unittest.main()
