@@ -1,10 +1,10 @@
 %%bash
 # ======================================================
-#  ARGOS v1.3 — Единая ячейка запуска для Google Colab
+#  ARGOS v1.4 — Единая ячейка запуска для Google Colab
 # ======================================================
 
 echo "======================================================"
-echo "  ARGOS v1.3 — COLAB BOOTSTRAP"
+echo "  ARGOS v1.4 — COLAB BOOTSTRAP"
 echo "======================================================"
 
 # ── 1. Системные зависимости ──────────────────────────
@@ -40,18 +40,20 @@ ollama list 2>/dev/null | grep -q 'llama3' || ollama pull llama3:8b
 echo "[+] Готово."
 
 # ── 5. Репозиторий ────────────────────────────────────
+REPO_DIR="Argoss"
+REPO_URL="https://github.com/labuaqlysnecy/Argoss.git"
 echo "[5/7] Репозиторий..."
 cd /content
-if [ ! -d "v1-3" ]; then
+if [ ! -d "$REPO_DIR" ]; then
     if [ -n "$GITHUB_TOKEN" ]; then
-        git clone "https://${GITHUB_TOKEN}@github.com/sigtrip/v1-3.git" v1-3
+        git clone "https://${GITHUB_TOKEN}@github.com/labuaqlysnecy/Argoss.git" "$REPO_DIR"
     else
-        git clone "https://github.com/sigtrip/v1-3.git" v1-3
+        git clone "$REPO_URL" "$REPO_DIR"
     fi
 else
-    cd v1-3 && git pull origin main 2>/dev/null || true && cd /content
+    cd "$REPO_DIR" && git pull origin main 2>/dev/null || true && cd /content
 fi
-cd /content/v1-3
+cd /content/"$REPO_DIR"
 echo "[+] Готово."
 
 # ── 6. Инициализация ──────────────────────────────────
@@ -93,7 +95,7 @@ echo ""
 echo "[7/7] Аргос сканирует свою структуру..."
 # Копируем awareness.py если его нет
 if [ ! -f "awareness.py" ]; then
-    curl -s "https://raw.githubusercontent.com/sigtrip/v1-3/main/awareness.py" \
+    curl -s "https://raw.githubusercontent.com/labuaqlysnecy/Argoss/main/awareness.py" \
          -o awareness.py 2>/dev/null || true
 fi
 python3 awareness.py 2>/dev/null || python3 -c "

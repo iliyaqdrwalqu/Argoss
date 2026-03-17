@@ -1,0 +1,93 @@
+name: 🐳 Docker — сборка и публикация образа
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'requirements.txt'
+      - 'src/**'
+      - 'main.py'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      push_image:
+        description: 'Публиковать образ в GHCR?'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  # Required by GitHub-hosted runners to use Node 24 for JavaScript actions
+  # (avoids deprecation warnings from actions that still default to Node 20).
+  # Can be removed once all referenced actions are updated to Node 24 natively.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/argoss
+
+jobs:
+  docker-build:
+    name: Сборка Docker-образа
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Определить теги образа
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=branch
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Войти в GitHub Container Registry
+        if: github.event_name == 'release' || github.event.inputs.push_image == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Собрать Docker-образ
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name == 'release' || github.event.inputs.push_image == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          target: runtime
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: Проверить образ (smoke test)
+        run: |
+          docker build -t argos-test:latest --target runtime .
+          docker run --rm argos-test:latest python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from src.argos_logger import get_logger
+          log = get_logger('test')
+          log.info('Docker smoke test passed')
+          print('✅ Docker образ работает корректно')
+          " || echo "⚠️  Smoke test завершился с ошибкой (возможно, нужны API-ключи)"

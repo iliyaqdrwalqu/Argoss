@@ -1,5 +1,11 @@
 # 👁️ ARGOS UNIVERSAL OS (v1.4.0)
 
+[![CI](https://github.com/labuaqlysnecy/Argoss/actions/workflows/ci.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/ci.yml)
+[![Docker](https://github.com/labuaqlysnecy/Argoss/actions/workflows/docker.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/docker.yml)
+[![APK](https://github.com/labuaqlysnecy/Argoss/actions/workflows/build_apk.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/build_apk.yml)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/labuaqlysnecy/Argoss/blob/main/argos_colab.ipynb)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
 > *"Самовоспроизводящаяся кроссплатформенная экосистема ИИ с квантовой логикой,*
 > *P2P-подключением и интеграцией с IoT. Создана для цифрового бессмертия."*
 > — Всеволод, 2026
@@ -780,9 +786,138 @@ opcua browse ns=0;i=84             # обзор узлов OPC UA
 
 ## 🐳 Docker
 
+### Быстрый запуск
+
 ```bash
+# Клонировать репозиторий
+git clone https://github.com/labuaqlysnecy/Argoss.git && cd Argoss
+
+# Скопировать и заполнить переменные окружения
+cp .env.example .env
+# Отредактировать .env (вставить API-ключи)
+
+# Запустить headless-сервер (Telegram + P2P + Dashboard :8080)
 docker-compose up -d
-# Headless + Telegram + P2P + Dashboard :8080
+
+# Просмотреть логи
+docker-compose logs -f argos_node
+
+# Остановить
+docker-compose down
+```
+
+### Сборка образа вручную
+
+```bash
+docker build -t argos-universal:1.4.0 .
+
+# Запуск контейнера напрямую
+docker run -d \
+  --name argos \
+  --env-file .env \
+  -p 8080:8080 \
+  -v $(pwd)/logs:/app/logs \
+  -v $(pwd)/config:/app/config \
+  -v $(pwd)/data:/app/data \
+  argos-universal:1.4.0
+```
+
+### GitHub Container Registry (GHCR)
+
+```bash
+# Публичный образ (после релиза)
+docker pull ghcr.io/labuaqlysnecy/argoss:latest
+docker run -d --env-file .env ghcr.io/labuaqlysnecy/argoss:latest
+```
+
+---
+
+## 🖥️ Сборка .exe / binary (Windows · Linux · macOS)
+
+```bash
+# Установить PyInstaller (если не установлен)
+pip install pyinstaller
+
+# Быстрая сборка (один portable-файл)
+python build_exe.py
+
+# Сборка в папку (быстрее запускается)
+python build_exe.py --onedir
+
+# Вручную через spec-файл
+pyinstaller argos.spec
+```
+
+После сборки:
+- **Windows:** `dist/ARGOS.exe` — portable, не требует установки
+- **Linux/macOS:** `dist/argos` — запустить `./dist/argos`
+- Архив `.7z` создаётся автоматически (требуется `pip install py7zr`)
+
+### GitHub Actions (автоматическая сборка)
+
+Рабочий процесс [build_windows.yml](.github/workflows/build_windows.yml) запускается при каждом пуше и создаёт `ARGOS.exe` + установщик `ARGOS_Setup.exe` (Inno Setup).
+
+---
+
+## 📱 Сборка Android APK (Buildozer)
+
+### Локальная сборка
+
+```bash
+# 1. Установить зависимости (Linux/macOS/WSL2)
+sudo apt-get install -y openjdk-17-jdk build-essential git zip unzip
+pip install buildozer cython
+
+# 2. Debug APK (быстро, ~30 мин первый раз)
+buildozer android debug
+
+# 3. Release APK (подписанный)
+buildozer android release
+
+# APK появится в папке bin/
+ls bin/*.apk
+```
+
+### Через Docker
+
+```bash
+# Использует официальный образ kivy/buildozer
+docker-compose --profile apk run apk_builder
+```
+
+### Google Colab (без установки)
+
+1. Открой ноутбук: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/labuaqlysnecy/Argoss/blob/main/argos_colab.ipynb)
+2. В последней ячейке выполни блок **APK-сборка**.
+
+### GitHub Actions (автоматическая сборка)
+
+Рабочий процесс [build_apk.yml](.github/workflows/build_apk.yml) запускается при пуше в `main` и загружает APK как артефакт CI.
+
+---
+
+## ☁️ Google Colab — запуск без установки
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/labuaqlysnecy/Argoss/blob/main/argos_colab.ipynb)
+
+Ноутбук [`argos_colab.ipynb`](argos_colab.ipynb) выполняет полную установку и запуск за ~5 минут:
+
+| Шаг | Что делает |
+|-----|------------|
+| 1️⃣  Проверка окружения | Определяет GPU/CPU, Python-версию |
+| 2️⃣  Секреты | Загружает API-ключи из Colab Secrets или ячейки |
+| 3️⃣  Системные пакеты | `portaudio`, `ffmpeg`, `espeak`, `sqlite3` |
+| 4️⃣  Репозиторий | `git clone https://github.com/labuaqlysnecy/Argoss` |
+| 5️⃣  Python-модули | `pip install -r requirements.txt` |
+| 6️⃣  Ollama (опц.) | Локальный LLM, если Gemini-ключ не задан |
+| 7️⃣  Инициализация | `genesis.py` + проверка структуры |
+| 8️⃣  Старт | `main.py --no-gui` (Telegram + P2P) |
+
+### Ручной запуск (один скрипт)
+
+```bash
+# В ячейке Colab:
+!bash <(curl -fsSL https://raw.githubusercontent.com/labuaqlysnecy/Argoss/main/colab_start.sh)
 ```
 
 ---

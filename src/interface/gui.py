@@ -12,6 +12,7 @@ gui.py — Главный интерфейс ARGOS на CustomTkinter
 """
 from __future__ import annotations
 
+import platform
 import threading
 import time
 from collections import deque
@@ -307,12 +308,13 @@ class ArgosGUI(ctk.CTk):
         )
         self.tabs.grid(row=0, column=0, sticky="nsew")
 
-        for name in ("💬 Консоль", "🧠 Память", "⚙️ Система"):
+        for name in ("💬 Консоль", "🧠 Память", "⚙️ Система", "📦 Сборка"):
             self.tabs.add(name)
 
         self._build_tab_console()
         self._build_tab_memory()
         self._build_tab_system()
+        self._build_tab_deploy()
 
         # ── Строка ввода ──────────────────────────────────────────────────
         inp_frame = ctk.CTkFrame(main, fg_color=_C["card"],
@@ -439,6 +441,176 @@ class ArgosGUI(ctk.CTk):
         self.sys_box.grid(row=1, column=0, sticky="nsew", padx=4, pady=(0, 4))
         self.sys_box.insert("end", "Нажмите «Обновить» для загрузки состояния.\n")
         self.sys_box.configure(state="disabled")
+
+    # ── Вкладка: Сборка / Deploy ─────────────────────────────────────────
+    def _build_tab_deploy(self):
+        tab = self.tabs.tab("📦 Сборка")
+        tab.grid_rowconfigure(1, weight=1)
+        tab.grid_columnconfigure(0, weight=1)
+
+        # ── Заголовок ─────────────────────────────────────────────────────
+        hdr = ctk.CTkFrame(tab, fg_color="transparent")
+        hdr.grid(row=0, column=0, sticky="ew", padx=8, pady=(10, 4))
+
+        ctk.CTkLabel(
+            hdr, text="⚙️  Сборка и развёртывание ARGOS",
+            font=_F["head"], text_color=_C["cyan"],
+        ).pack(side="left", padx=4)
+
+        # ── Прокручиваемый контент ────────────────────────────────────────
+        scroll = ctk.CTkScrollableFrame(
+            tab, fg_color=_C["bg"], corner_radius=6,
+        )
+        scroll.grid(row=1, column=0, sticky="nsew", padx=4, pady=(0, 4))
+        scroll.grid_columnconfigure(0, weight=1)
+
+        def _card(parent, title: str, color: str = None) -> ctk.CTkFrame:
+            c = ctk.CTkFrame(parent, fg_color=_C["card"], corner_radius=8,
+                             border_width=1, border_color=color or _C["btn_border"])
+            c.pack(fill="x", padx=6, pady=5)
+            ctk.CTkLabel(c, text=title, font=_F["head"],
+                         text_color=color or _C["cyan"]).pack(
+                anchor="w", padx=12, pady=(10, 4))
+            return c
+
+        def _row(parent) -> ctk.CTkFrame:
+            f = ctk.CTkFrame(parent, fg_color="transparent")
+            f.pack(fill="x", padx=8, pady=(0, 8))
+            return f
+
+        def _action_btn(parent, text: str, cmd, color: str = None) -> ctk.CTkButton:
+            b = ctk.CTkButton(
+                parent, text=text, height=32, font=_F["btn"],
+                fg_color=_C["btn"], hover_color=_C["btn_hover"],
+                border_color=color or _C["btn_border"], border_width=1,
+                text_color=color or _C["cyan"],
+                command=cmd,
+            )
+            b.pack(side="left", padx=(0, 6))
+            return b
+
+        # ── Docker ────────────────────────────────────────────────────────
+        card = _card(scroll, "🐳  Docker", _C["cyan"])
+        _info = ctk.CTkLabel(card, text="Запуск headless-сервера ARGOS в контейнере",
+                              font=_F["small"], text_color=_C["text_dim"])
+        _info.pack(anchor="w", padx=12, pady=(0, 4))
+        row = _row(card)
+        _action_btn(row, "▶ docker-compose up",
+                    lambda: self._run_build_cmd("docker-compose up -d"),
+                    _C["cyan"])
+        _action_btn(row, "⏹ docker-compose down",
+                    lambda: self._run_build_cmd("docker-compose down"),
+                    _C["red"])
+        _action_btn(row, "🔨 docker build",
+                    lambda: self._run_build_cmd("docker build -t argos-universal:latest ."),
+                    _C["cyan_dim"])
+
+        # ── EXE (Windows/Linux) ───────────────────────────────────────────
+        card2 = _card(scroll, "🖥️  Сборка .exe / binary", _C["green"])
+        ctk.CTkLabel(card2, text="PyInstaller → portable single-file executable",
+                     font=_F["small"], text_color=_C["text_dim"]).pack(
+            anchor="w", padx=12, pady=(0, 4))
+        row2 = _row(card2)
+        _action_btn(row2, "▶ build_exe.py",
+                    lambda: self._run_build_cmd("python build_exe.py"),
+                    _C["green"])
+        _action_btn(row2, "▶ build_exe.py --onedir",
+                    lambda: self._run_build_cmd("python build_exe.py --onedir"),
+                    _C["green_dim"])
+        _action_btn(row2, "▶ pyinstaller argos.spec",
+                    lambda: self._run_build_cmd("pyinstaller argos.spec"),
+                    _C["green_dim"])
+
+        # ── APK (Android) ─────────────────────────────────────────────────
+        card3 = _card(scroll, "📱  Android APK (Buildozer)", _C["yellow"])
+        ctk.CTkLabel(card3,
+                     text="Требуется: buildozer, openjdk-17, Android SDK/NDK",
+                     font=_F["small"], text_color=_C["text_dim"]).pack(
+            anchor="w", padx=12, pady=(0, 4))
+        row3 = _row(card3)
+        _action_btn(row3, "▶ buildozer debug",
+                    lambda: self._run_build_cmd("buildozer android debug"),
+                    _C["yellow"])
+        _action_btn(row3, "▶ buildozer release",
+                    lambda: self._run_build_cmd("buildozer android release"),
+                    _C["yellow"])
+        _action_btn(row3, "🔄 buildozer clean",
+                    lambda: self._run_build_cmd("buildozer android clean"),
+                    _C["text_dim"])
+
+        # ── Google Colab ──────────────────────────────────────────────────
+        card4 = _card(scroll, "☁️  Google Colab", _C["cyan_dim"])
+        ctk.CTkLabel(card4,
+                     text="Запуск ARGOS в браузере — без локальной установки",
+                     font=_F["small"], text_color=_C["text_dim"]).pack(
+            anchor="w", padx=12, pady=(0, 4))
+        row4 = _row(card4)
+        _action_btn(row4, "📋 Скопировать ссылку",
+                    self._copy_colab_url, _C["cyan_dim"])
+        _action_btn(row4, "📂 Открыть argos_colab.ipynb",
+                    lambda: self._run_build_cmd("start argos_colab.ipynb"
+                                                if platform.system() == "Windows"
+                                                else "xdg-open argos_colab.ipynb"),
+                    _C["cyan_dim"])
+
+        # ── Лог сборки ────────────────────────────────────────────────────
+        ctk.CTkLabel(scroll, text="📋  Лог сборки",
+                     font=_F["head"], text_color=_C["text_dim"]).pack(
+            anchor="w", padx=12, pady=(8, 2))
+        self._deploy_log = ctk.CTkTextbox(
+            scroll, height=140, font=("Consolas", 11),
+            fg_color=_C["input_bg"], text_color=_C["green"],
+            border_width=0, corner_radius=6,
+        )
+        self._deploy_log.pack(fill="x", padx=6, pady=(0, 8))
+        self._deploy_log.insert("end", "Лог сборки появится здесь...\n")
+        self._deploy_log.configure(state="disabled")
+
+    def _run_build_cmd(self, cmd: str):
+        """Запускает shell-команду сборки и стримит вывод в лог вкладки."""
+        import subprocess, shlex
+
+        def _run():
+            self._deploy_log_append(f"\n$ {cmd}\n")
+            try:
+                use_shell = platform.system() == "Windows"
+                proc = subprocess.Popen(
+                    cmd if use_shell else shlex.split(cmd),
+                    shell=use_shell,
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    text=True, bufsize=1,
+                )
+                for line in proc.stdout:
+                    self._deploy_log_append(line)
+                proc.wait()
+                status = "✅ Готово" if proc.returncode == 0 else f"❌ Код: {proc.returncode}"
+                self._deploy_log_append(f"{status}\n")
+            except FileNotFoundError as exc:
+                self._deploy_log_append(f"❌ Команда не найдена: {exc}\n")
+            except Exception as exc:
+                self._deploy_log_append(f"❌ Ошибка: {exc}\n")
+
+        threading.Thread(target=_run, daemon=True).start()
+        self.tabs.set("📦 Сборка")
+
+    def _deploy_log_append(self, text: str):
+        self.after(0, self._deploy_log_append_ui, text)
+
+    def _deploy_log_append_ui(self, text: str):
+        self._deploy_log.configure(state="normal")
+        self._deploy_log.insert("end", text)
+        self._deploy_log.see("end")
+        self._deploy_log.configure(state="disabled")
+
+    def _copy_colab_url(self):
+        url = ("https://colab.research.google.com/github/"
+               "labuaqlysnecy/Argoss/blob/main/argos_colab.ipynb")
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(url)
+            self._deploy_log_append(f"📋 Ссылка скопирована: {url}\n")
+        except Exception:
+            self._deploy_log_append(f"Ссылка: {url}\n")
 
     # ── Строка состояния ──────────────────────────────────────────────────
     def _build_statusbar(self):

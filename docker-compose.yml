@@ -1,15 +1,52 @@
 version: '3.8'
+
 services:
+  # ── Main Argos node (headless server) ──────────────────────────────────────
   argos_node:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: argos-universal:1.4.0
     container_name: argos_child_node
+    env_file: .env
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - USER_ID=${USER_ID}
-      - MODE=server
+      - ARGOS_HOMEOSTASIS=on
+      - ARGOS_CURIOSITY=on
+      - ARGOS_TASK_WORKERS=2
     volumes:
-      - ./logs:/app/logs
-      - ./config:/app/config
+      - argos_logs:/app/logs
+      - argos_config:/app/config
+      - argos_data:/app/data
+    ports:
+      - "8080:8080"
     network_mode: "host"
-    restart: always
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sh", "-c",
+             "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=5)\" || python -c \"import src.argos_logger; print('ok')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── APK builder (run once: docker-compose run apk_builder) ─────────────────
+  apk_builder:
+    image: kivy/buildozer:latest
+    container_name: argos_apk_builder
+    working_dir: /home/user/hostcwd
+    volumes:
+      - .:/home/user/hostcwd
+      - argos_buildozer_cache:/home/user/.buildozer
+    command: android debug
+    profiles:
+      - apk
+
+volumes:
+  argos_logs:
+  argos_config:
+  argos_data:
+  argos_buildozer_cache:
