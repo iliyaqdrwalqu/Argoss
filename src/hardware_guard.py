@@ -115,12 +115,6 @@ class HardwareHomeostasisGuard:
         return "Analytic"
 
     def _apply_mitigation(self, state: str, cpu: float, ram: float, temp: float | None) -> str:
-        if hasattr(self.core, "quantum") and self.core.quantum:
-            try:
-                self.core.quantum.set_external_telemetry(cpu=cpu, ram=ram, temp=temp, ttl_seconds=max(10, self.interval_sec * 2))
-            except Exception:
-                pass
-
         if state == "Unstable":
             self.core._homeostasis_block_heavy = True
             self.core.auto_collab_enabled = False
@@ -128,7 +122,7 @@ class HardwareHomeostasisGuard:
             if hasattr(self.core, "context") and self.core.context:
                 self.core.context.set_quantum_state("Unstable")
             if hasattr(self.core, "quantum") and self.core.quantum:
-                self.core.quantum.force_state("Unstable", ttl_seconds=max(15, self.interval_sec * 2))
+                self.core.quantum.set_state("Unstable")
             return "heavy_tasks=blocked, auto_collab=off"
 
         if state == "Protective":
@@ -138,10 +132,12 @@ class HardwareHomeostasisGuard:
             if hasattr(self.core, "context") and self.core.context:
                 self.core.context.set_quantum_state("Protective")
             if hasattr(self.core, "quantum") and self.core.quantum:
-                self.core.quantum.force_state("Protective", ttl_seconds=max(15, self.interval_sec * 2))
+                self.core.quantum.set_state("Protective")
             return "heavy_tasks=throttled, auto_collab=off"
 
         self.core._homeostasis_block_heavy = False
         if hasattr(self.core, "context") and self.core.context:
             self.core.context.set_quantum_state("Analytic")
+        if hasattr(self.core, "quantum") and self.core.quantum:
+            self.core.quantum.set_state("Analytic")
         return "none"
