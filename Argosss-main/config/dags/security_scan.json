@@ -1,0 +1,27 @@
+{
+  "description": "Сканирование безопасности",
+  "nodes": [
+    {
+      "id": "scan",
+      "func": "scan_net"
+    },
+    {
+      "id": "save",
+      "func": "save_file"
+    },
+    {
+      "id": "notify",
+      "func": "telegram_notify"
+    }
+  ],
+  "edges": [
+    {
+      "from": "scan",
+      "to": "save"
+    },
+    {
+      "from": "save",
+      "to": "notify"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"name": "test_dag", "nodes": {"s": {"func": "status"}, "d": {"func": "done"}}, "edges": [["s", "d"]]}

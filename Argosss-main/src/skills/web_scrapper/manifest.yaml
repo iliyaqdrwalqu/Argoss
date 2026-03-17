@@ -1,0 +1,14 @@
+name: web_scrapper
+display_name: "Паук"
+version: "1.0.1"
+description: "Анонимный парсинг DuckDuckGo"
+author: "Аргос / Всеволод"
+entry: "skill.py"
+permissions: ['network']
+dependencies: ['requests', 'beautifulsoup4']
+entry_class: ArgosScrapper
+lifecycle:
+  on_load: true
+  on_unload: true
+  on_update: true
+  health_check: true

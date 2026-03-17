@@ -1,0 +1,14 @@
+name: net_scanner
+display_name: "Сетевой Призрак"
+version: "1.2.0"
+description: "Сканирование сети и портов"
+author: "Аргос / Всеволод"
+entry: "skill.py"
+permissions: ['network', 'system']
+dependencies: []
+entry_class: NetGhost
+lifecycle:
+  on_load: true
+  on_unload: true
+  on_update: true
+  health_check: true

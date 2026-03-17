@@ -1,0 +1,18 @@
+{
+  "id": "gw_01",
+  "template": "esp32_lora",
+  "spec": {
+    "description": "ESP32 + SX1276/1278 LoRa шлюз",
+    "hardware": "ESP32 + LoRa module",
+    "protocol": "lora",
+    "firmware": "arduino_lora_gw",
+    "config": {
+      "frequency": 433.0,
+      "spreading_factor": 7,
+      "bandwidth": 125000,
+      "mqtt_topic": "argos/lora"
+    }
+  },
+  "created_at": 1772165749.9909585,
+  "status": "firmware_ready"
+}

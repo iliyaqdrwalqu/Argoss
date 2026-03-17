@@ -1,0 +1,107 @@
+name: 🏗️ Build ARGOS APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'main_kivy.py'
+      - 'kivy_1gui.py'
+      - 'buildozer.spec'
+      - 'src/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'main_kivy.py'
+      - 'kivy_1gui.py'
+      - 'buildozer.spec'
+  workflow_dispatch:
+    inputs:
+      release_mode:
+        description: 'Режим сборки'
+        required: false
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  build-apk:
+    name: Build Android APK (${{ github.event.inputs.release_mode || 'debug' }})
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            git zip unzip \
+            openjdk-17-jdk \
+            build-essential \
+            libssl-dev libffi-dev \
+            libsqlite3-dev zlib1g-dev \
+            libncurses5-dev libncursesw5-dev \
+            libbz2-dev liblzma-dev \
+            autoconf automake libtool \
+            cmake pkg-config \
+            ccache
+
+      - name: Configure JAVA_HOME
+        run: |
+          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> "$GITHUB_ENV"
+
+      - name: Cache buildozer global directory
+        uses: actions/cache@v5
+        with:
+          path: ~/.buildozer
+          key: buildozer-global-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-global-${{ runner.os }}-
+
+      - name: Cache pip packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/pip
+          key: pip-buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+          restore-keys: pip-buildozer-${{ runner.os }}-
+
+      - name: Install Python build tools
+        run: |
+          pip install --upgrade pip setuptools wheel
+          pip install buildozer cython==0.29.37
+
+      - name: Build APK
+        timeout-minutes: 60
+        env:
+          BUILDOZER_WARN_ON_ROOT: "0"
+        run: |
+          MODE="${{ github.event.inputs.release_mode || 'debug' }}"
+          echo "▶ buildozer android $MODE"
+          buildozer -v android $MODE
+
+      - name: List built APK(s)
+        if: always()
+        run: |
+          echo "=== Собранные APK ==="
+          find bin/ -name "*.apk" 2>/dev/null || echo "APK-файлы не найдены в bin/"
+
+      - name: Upload APK artifact
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: argos-apk-${{ github.event.inputs.release_mode || 'debug' }}-${{ github.run_number }}
+          path: bin/*.apk
+          if-no-files-found: warn
+          retention-days: 30

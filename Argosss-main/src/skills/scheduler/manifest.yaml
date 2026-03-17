@@ -1,0 +1,14 @@
+name: scheduler
+display_name: "Планировщик"
+version: "2.0.0"
+description: "Задачи на натуральном языке"
+author: "Аргос / Всеволод"
+entry: "skill.py"
+permissions: ['system']
+dependencies: []
+entry_class: ArgosScheduler
+lifecycle:
+  on_load: true
+  on_unload: true
+  on_update: true
+  health_check: true

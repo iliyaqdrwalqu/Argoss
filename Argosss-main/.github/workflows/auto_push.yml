@@ -1,0 +1,131 @@
+name: 🚀 Auto Push Commit to Repo
+
+# Автоматически коммитит и пушит изменения в репозиторий.
+# Запускается:
+#   - вручную через UI GitHub (workflow_dispatch)
+#   - по расписанию каждые 6 часов
+#   - после успешного завершения сборки APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_message:
+        description: 'Сообщение коммита'
+        required: false
+        default: 'chore: автоматический коммит изменений [skip ci]'
+      files:
+        description: 'Файлы для добавления (через пробел; пусто = все изменения)'
+        required: false
+        default: ''
+      branch:
+        description: 'Ветка для пуша (пусто = текущая ветка)'
+        required: false
+        default: ''
+
+  schedule:
+    # Каждые 6 часов (UTC): 0:00, 6:00, 12:00, 18:00
+    - cron: '0 0,6,12,18 * * *'
+
+  workflow_run:
+    workflows: ['🏗️ Build ARGOS APK']
+    types: [completed]
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  auto-push:
+    name: Commit & Push changes
+    runs-on: ubuntu-latest
+    # При запуске после APK-сборки — пушим только если сборка прошла успешно
+    if: >
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Для пуша нужен полный fetch
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "ARGOS AutoPush"
+          git config user.email "argos@sigtrip.dev"
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git status --short
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Stage files
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          FILES="${{ github.event.inputs.files }}"
+          if [ -n "$FILES" ]; then
+            for f in $FILES; do
+              if [ -e "$f" ]; then
+                git add -- "$f"
+                echo "✅ Добавлен: $f"
+              else
+                echo "⚠️  Файл не найден: $f"
+              fi
+            done
+          else
+            git add -A
+            echo "✅ Добавлены все изменения (git add -A)"
+          fi
+
+      - name: Check staged changes
+        id: check_staged
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          STAGED=$(git diff --cached --name-only)
+          if [ -z "$STAGED" ]; then
+            echo "staged=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Нечего коммитить — нет изменений в индексе."
+          else
+            echo "staged=true" >> $GITHUB_OUTPUT
+            echo "Изменённые файлы:"
+            echo "$STAGED"
+          fi
+
+      - name: Commit changes
+        if: >
+          steps.check_changes.outputs.has_changes == 'true' &&
+          steps.check_staged.outputs.staged == 'true'
+        run: |
+          MSG="${{ github.event.inputs.commit_message }}"
+          if [ -z "$MSG" ]; then
+            MSG="chore: автоматический коммит изменений [skip ci]"
+          fi
+          git commit -m "$MSG"
+          echo "✅ Коммит создан: $MSG"
+
+      - name: Push changes
+        if: >
+          steps.check_changes.outputs.has_changes == 'true' &&
+          steps.check_staged.outputs.staged == 'true'
+        run: |
+          BRANCH="${{ github.event.inputs.branch }}"
+          if [ -z "$BRANCH" ]; then
+            BRANCH="${{ github.ref_name }}"
+          fi
+          git push origin "$BRANCH"
+          echo "🚀 Изменения запушены в ветку: $BRANCH"
+
+      - name: Nothing to push
+        if: >
+          steps.check_changes.outputs.has_changes == 'false' ||
+          steps.check_staged.outputs.staged == 'false'
+        run: echo "✅ Репозиторий актуален, пуш не требуется."
