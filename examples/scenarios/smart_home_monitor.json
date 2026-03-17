@@ -1,0 +1,59 @@
+{
+  "name": "smart_home_monitor",
+  "description": "Ночной мониторинг умного дома с авто-реакцией и алертами.",
+  "trigger": {
+    "type": "schedule",
+    "cron": "*/10 22-6 * * *"
+  },
+  "steps": [
+    {
+      "id": "collect_metrics",
+      "action": "get_system_stats",
+      "params": {
+        "include": [
+          "cpu",
+          "ram",
+          "disk",
+          "temperature"
+        ]
+      }
+    },
+    {
+      "id": "vision_check",
+      "action": "vision_snapshot_analyze",
+      "params": {
+        "question": "Есть ли движение или аномалии на входе?"
+      }
+    },
+    {
+      "id": "iot_probe",
+      "action": "scan_iot_devices",
+      "params": {
+        "protocols": [
+          "zigbee",
+          "mqtt",
+          "lora"
+        ]
+      }
+    },
+    {
+      "id": "alert_policy",
+      "action": "send_telegram_alert",
+      "when": {
+        "any": [
+          "cpu > 85",
+          "temperature > 70",
+          "vision_check.contains_anomaly == true",
+          "iot_probe.offline_devices_count > 0"
+        ]
+      },
+      "params": {
+        "severity": "high"
+      }
+    }
+  ],
+  "rollback": {
+    "enabled": true,
+    "snapshot_before": true
+  }
+}

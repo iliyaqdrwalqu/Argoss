@@ -1,0 +1,107 @@
+name: 🖥️ Build ARGOS Windows setup.exe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'main.py'
+      - 'requirements.txt'
+      - 'argos.spec'
+      - 'installer/argos_setup.iss'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'main.py'
+      - 'requirements.txt'
+      - 'argos.spec'
+      - 'installer/argos_setup.iss'
+  workflow_dispatch:
+    inputs:
+      one_file:
+        description: 'PyInstaller режим'
+        required: false
+        default: 'onefile'
+        type: choice
+        options:
+          - onefile
+          - onedir
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  build-windows:
+    name: Build Windows Installer (setup.exe)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v5
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: pip-win-${{ hashFiles('requirements.txt') }}
+          restore-keys: pip-win-
+
+      - name: Strip Jupyter magic line from main.py
+        # buildozer/PyInstaller cannot parse the %%writefile Jupyter cell magic
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("main.py")
+          lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
+          if lines and lines[0].startswith("%%"):
+              p.write_text("".join(lines[1:]), encoding="utf-8")
+              print("Stripped magic line.")
+          else:
+              print("No magic line found.")
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pyinstaller
+          pip install requests fastapi uvicorn python-dotenv openai
+        # Kivy is GUI-only and heavy; the app gracefully falls back to terminal mode
+        # on Windows without it.
+
+      - name: Build ARGOS.exe with PyInstaller
+        run: |
+          pyinstaller argos.spec
+          dir dist\
+
+      - name: List dist contents
+        shell: cmd
+        run: dir dist\ /s /b
+
+      - name: Build setup.exe with Inno Setup
+        shell: cmd
+        # ISCC.exe is pre-installed on windows-latest runners
+        run: |
+          "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" installer\argos_setup.iss
+          dir installer\Output\
+
+      - name: Upload ARGOS.exe artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: argos-windows-exe-${{ github.run_number }}
+          path: dist\ARGOS.exe
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload setup.exe artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: argos-windows-setup-${{ github.run_number }}
+          path: installer\Output\ARGOS_Setup.exe
+          if-no-files-found: warn
+          retention-days: 30

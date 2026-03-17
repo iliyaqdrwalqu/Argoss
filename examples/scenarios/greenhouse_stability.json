@@ -1,0 +1,60 @@
+{
+  "name": "greenhouse_stability",
+  "description": "Стабилизация климата теплицы с упреждающей регулировкой.",
+  "trigger": {
+    "type": "schedule",
+    "cron": "*/5 * * * *"
+  },
+  "steps": [
+    {
+      "id": "read_sensors",
+      "action": "scan_iot_devices",
+      "params": {
+        "target_group": "greenhouse",
+        "metrics": [
+          "temp",
+          "humidity",
+          "co2",
+          "soil_moisture"
+        ]
+      }
+    },
+    {
+      "id": "quantum_state",
+      "action": "quantum_infer_state",
+      "params": {
+        "hint": "greenhouse"
+      }
+    },
+    {
+      "id": "climate_control",
+      "action": "apply_rules",
+      "when": {
+        "any": [
+          "temp > 32",
+          "humidity < 45",
+          "soil_moisture < 28"
+        ]
+      },
+      "params": {
+        "turn_on": [
+          "ventilation",
+          "irrigation"
+        ],
+        "set_mode": "protective"
+      }
+    },
+    {
+      "id": "daily_report",
+      "action": "send_telegram_alert",
+      "params": {
+        "severity": "info",
+        "template": "greenhouse_summary"
+      }
+    }
+  ],
+  "rollback": {
+    "enabled": true,
+    "snapshot_before": true
+  }
+}

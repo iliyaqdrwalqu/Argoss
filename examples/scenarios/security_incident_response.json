@@ -1,0 +1,58 @@
+{
+  "name": "security_incident_response",
+  "description": "Реакция на инцидент: снимок, диагностика, изоляция, rollback.",
+  "trigger": {
+    "type": "event",
+    "source": "system.alert",
+    "match": {
+      "severity": [
+        "high",
+        "critical"
+      ],
+      "category": [
+        "security",
+        "integrity"
+      ]
+    }
+  },
+  "steps": [
+    {
+      "id": "snapshot",
+      "action": "create_snapshot",
+      "params": {
+        "label": "incident_pre_action"
+      }
+    },
+    {
+      "id": "diagnostics",
+      "action": "health_check",
+      "params": {
+        "include": [
+          "modules",
+          "database",
+          "configs",
+          "imports"
+        ]
+      }
+    },
+    {
+      "id": "isolate",
+      "action": "network_isolation",
+      "params": {
+        "mode": "restrict_outbound"
+      }
+    },
+    {
+      "id": "notify",
+      "action": "send_telegram_alert",
+      "params": {
+        "severity": "critical",
+        "template": "security_incident"
+      }
+    }
+  ],
+  "rollback": {
+    "enabled": true,
+    "strategy": "latest_stable_snapshot"
+  }
+}

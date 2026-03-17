@@ -1,0 +1,14 @@
+name: evolution
+display_name: "Эволюция"
+version: "2.1.0"
+description: "Генерация навыков через ИИ"
+author: "Аргос / Всеволод"
+entry: "skill.py"
+permissions: ['system', 'network', 'file_write']
+dependencies: []
+entry_class: ArgosEvolution
+lifecycle:
+  on_load: true
+  on_unload: true
+  on_update: true
+  health_check: true

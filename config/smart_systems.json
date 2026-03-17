@@ -1,0 +1,40 @@
+{
+  "main": {
+    "type": "aquarium",
+    "sensors": {},
+    "actuators": {},
+    "custom_rules": []
+  },
+  "tank1": {
+    "type": "aquarium",
+    "sensors": {},
+    "actuators": {},
+    "custom_rules": []
+  },
+  "a1": {
+    "type": "aquarium",
+    "sensors": {},
+    "actuators": {},
+    "custom_rules": []
+  },
+  "теплица_1": {
+    "type": "greenhouse",
+    "sensors": {
+      "temp": 38.0
+    },
+    "actuators": {
+      "ventilation": "on",
+      "irrigation": "on"
+    },
+    "custom_rules": []
+  },
+  "gh_test": {
+    "type": "greenhouse",
+    "sensors": {},
+    "actuators": {
+      "irrigation": "on",
+      "ventilation": "on"
+    },
+    "custom_rules": []
+  }
+}

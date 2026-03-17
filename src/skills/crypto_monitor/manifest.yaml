@@ -1,0 +1,14 @@
+name: crypto_monitor
+display_name: "Крипто Страж"
+version: "1.1.0"
+description: "Мониторинг BTC/ETH + алерты"
+author: "Аргос / Всеволод"
+entry: "skill.py"
+permissions: ['network']
+dependencies: ['requests']
+entry_class: CryptoSentinel
+lifecycle:
+  on_load: true
+  on_unload: true
+  on_update: true
+  health_check: true

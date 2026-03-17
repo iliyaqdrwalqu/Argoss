@@ -1,0 +1,21 @@
+[Unit]
+Description=Argos Universal OS — AI System Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=codespace
+WorkingDirectory=/workspaces/v1-3
+ExecStart=/usr/bin/python3 /workspaces/v1-3/main.py --no-gui
+Restart=always
+RestartSec=10
+Environment=DISPLAY=:0
+EnvironmentFile=/workspaces/v1-3/.env
+
+# Логирование
+StandardOutput=append:/workspaces/v1-3/logs/service.log
+StandardError=append:/workspaces/v1-3/logs/service_error.log
+
+[Install]
+WantedBy=multi-user.target

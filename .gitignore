@@ -1,0 +1,15 @@
+.env
+*.db
+*.pyc
+__pycache__/
+*.log
+build/
+dist/
+*.egg-info/
+.venv/
+data/argos_model/*.pkl
+config/master.key
+config/master_auth.hash
+config/node_id
+config/node_birth
+*.zip

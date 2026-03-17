@@ -1,0 +1,63 @@
+name: 🔱 ARGOS CI — Сборка и проверка
+
+on:
+  push:
+    branches: [main, master, "copilot/**"]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  build:
+    name: Сборка и тестирование
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Настройка Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Собрать проект из исходников
+        run: python build.py
+
+      - name: Установить зависимости
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Проверка синтаксиса всех модулей
+        run: |
+          find src -name "*.py" | sort | xargs python -m py_compile
+          echo "✅ Синтаксис OK"
+
+      - name: Проверка импорта ключевых модулей
+        run: |
+          python -c "from src.argos_logger import get_logger; print('✅ argos_logger')"
+          python -c "from src.quantum.logic import QuantumEngine; print('✅ QuantumEngine')"
+          python -c "from src.argos_model import ArgosOwnModel; print('✅ ArgosOwnModel')"
+          python -c "from src.event_bus import EventBus, Events, get_bus; print('✅ EventBus')"
+
+      - name: Проверка работоспособности (health_check)
+        run: python health_check.py 2>&1 | tail -10
+        timeout-minutes: 1
+
+      - name: Запуск тестов
+        run: pytest tests/test_core.py -v
+        timeout-minutes: 2
+
+      - name: Загрузить артефакты сборки
+        uses: actions/upload-artifact@v5
+        with:
+          name: argos-src
+          path: src/
+          retention-days: 7

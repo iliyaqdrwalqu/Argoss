@@ -1,0 +1,148 @@
+name: 🚀 ARGOS Release — Сборка и публикация релиза
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Версия релиза (например: 1.4.0)"
+        required: true
+        default: "1.4.0"
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  release:
+    name: Сборка ZIP и публикация релиза
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Настройка Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Установка зависимостей для сборки
+        run: pip install -q setuptools wheel
+
+      - name: Определить версию
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Версия: $VERSION"
+
+      - name: Запустить тесты
+        run: |
+          pip install -q pytest
+          python -m pytest tests/test_industrial_protocols.py \
+                           tests/test_consciousness_module.py \
+                           tests/test_colibri_daemon.py \
+                           tests/test_organize_files.py \
+                           -v --tb=short
+
+      - name: Запустить health_check
+        run: python health_check.py || true
+
+      - name: Собрать релизный ZIP
+        run: python pack_archive.py --version ${{ steps.version.outputs.version }}
+
+      - name: Проверить архив
+        run: |
+          ls -lh releases/
+          python - <<'EOF'
+          import zipfile, sys
+          z = "releases/argos-v${{ steps.version.outputs.version }}.zip"
+          with zipfile.ZipFile(z) as zf:
+              count = len(zf.namelist())
+              print(f"✅ Архив: {count} файлов")
+              if count < 50:
+                  print("❌ Слишком мало файлов!")
+                  sys.exit(1)
+          EOF
+
+      - name: Создать GitHub Release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const version = '${{ steps.version.outputs.version }}';
+            const tagName = `v${version}`;
+            const zipPath = `releases/argos-v${version}.zip`;
+
+            // Создать релиз
+            const release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tagName,
+              name: `🔱 ARGOS v${version} — Промышленные протоколы`,
+              body: [
+                `## 🔱 ARGOS v${version}`,
+                '',
+                '### 🆕 Что нового',
+                '- ✅ **Промышленные протоколы** — полная интеграция `industrial_protocols.py`:',
+                '  - 🏗️ **KNX** (EN 50090) — умные здания, HVAC, освещение',
+                '  - 🏭 **LonWorks** (ISO/IEC 14908) — промышленная автоматизация',
+                '  - 📊 **M-Bus** (EN 13757) — счётчики энергии/воды/газа',
+                '  - 🔗 **OPC UA** (IEC 62541) — промышленный IoT / SCADA',
+                '- Graceful degradation: работает без внешних библиотек (симуляция)',
+                '- Интегрирован в `ArgosCore` как `core.industrial`',
+                '- 18 новых unit-тестов',
+                '',
+                '### 📦 Установка и запуск',
+                '```bash',
+                `unzip argos-v${version}.zip`,
+                `cd argos-v${version}`,
+                'pip install -r requirements.txt',
+                'python main.py --full',
+                '```',
+                '',
+                '### 🔧 Команды промышленных протоколов',
+                '```',
+                'industrial статус',
+                'industrial discovery',
+                'knx подключи 192.168.1.100',
+                'opcua подключи opc.tcp://srv:4840',
+                'mbus serial /dev/ttyUSB0',
+                '```',
+              ].join('\n'),
+              draft: false,
+              prerelease: false,
+            });
+
+            // Загрузить ZIP как asset
+            const zipData = fs.readFileSync(zipPath);
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.data.id,
+              name: `argos-v${version}.zip`,
+              data: zipData,
+              headers: {
+                'content-type': 'application/zip',
+                'content-length': zipData.length,
+              },
+            });
+
+            console.log(`✅ Релиз создан: ${release.data.html_url}`);
+
+      - name: Сохранить архив как артефакт CI
+        uses: actions/upload-artifact@v5
+        with:
+          name: argos-v${{ steps.version.outputs.version }}-release
+          path: releases/argos-v${{ steps.version.outputs.version }}.zip
+          retention-days: 90
