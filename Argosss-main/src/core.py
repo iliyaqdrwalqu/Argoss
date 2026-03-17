@@ -2312,6 +2312,17 @@ class ArgosCore:
         ]):
             return self._argoscore_functions()
 
+        # ── Браузерный канал ──────────────────────────────
+        if any(k in t for k in ["спроси браузер", "browser query", "отправь в браузер"]):
+            query = text
+            for k in ["спроси браузер", "browser query", "отправь в браузер"]:
+                query = query.replace(k, "").strip()
+            try:
+                from src.skills.browser_conduit import handle_browser_query
+                return handle_browser_query(self, query)
+            except Exception as e:
+                return f"❌ browser_conduit: {e}"
+
         # ── Помощь ────────────────────────────────────────
         if t.strip() in ("помощь", "команды", "что умеешь", "help", "?"):
             return self._help()

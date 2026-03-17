@@ -13,6 +13,9 @@
 opencv-python>=4.9.0
 pyautogui>=0.9.54
 
+# ── Браузерный канал (src/skills/browser_conduit.py)
+pyperclip>=1.8.0
+
 # ── Дополнительное распознавание речи / wake-word
 pvporcupine>=3.0.0              # Wake-word (требует ключ PicoVoice)
 
