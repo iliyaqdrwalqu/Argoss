@@ -166,7 +166,7 @@ def check_core_files() -> Section:
         "requirements.txt": "Зависимости Python",
         "buildozer.spec": "Конфигурация сборки APK",
         "telegram_bot.py": "Telegram-бот с историей чата",
-        "argos_model.py": "Локальная нейросеть Аргоса",
+        "src/argos_model.py": "Локальная нейросеть Аргоса",
         "git_push.py": "Скрипт автопуша коммитов",
         "README.md": "Документация",
         ".github/workflows/build_apk.yml": "CI сборка APK",
@@ -317,7 +317,7 @@ def check_argos_runtime() -> Section:
     finally:
         Path(tf_name).unlink(missing_ok=True)
 
-    # Импортируем ArgosAbsolute из очищенного main.py
+    # Импортируем основной класс оркестратора из очищенного main.py
     try:
         import importlib.util as ilu
         import types, tempfile as _tf, os as _os
@@ -339,7 +339,7 @@ def check_argos_runtime() -> Section:
             Path(tf2_name).unlink(missing_ok=True)
 
         core = mod.ArgosAbsolute()
-        s.add("ArgosAbsolute инициализация", "ok",
+        s.add("ArgosOrchestrator инициализация", "ok",
               f"node_id={core.node_id}, version={core.version}")
 
         # Тест команд
@@ -349,7 +349,7 @@ def check_argos_runtime() -> Section:
             s.add(f"execute('{cmd}')", "ok" if ok else "warn", result[:80])
 
     except Exception as e:
-        s.add("ArgosAbsolute", "error", str(e))
+        s.add("ArgosOrchestrator", "warn", str(e))
 
     # Telegram bot — просто проверяем синтаксис
     try:
