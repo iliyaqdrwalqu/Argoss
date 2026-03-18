@@ -1,3 +1,4 @@
+
 name: 📦 Publish to TestPyPI
 
 # Publishes argos-universalsigtrip to TestPyPI via OIDC Trusted Publishing.
@@ -13,6 +14,8 @@ name: 📦 Publish to TestPyPI
 #      - Workflow file:     publish_testpypi.yml
 #      - Environment name:  (leave blank)
 
+name: Publish to TestPyPI (OIDC)
+
 on:
   workflow_dispatch:
   release:
@@ -20,11 +23,18 @@ on:
 
 permissions:
   contents: read
+
   id-token: write  # Required for OIDC Trusted Publishing
 
 jobs:
   publish-testpypi:
     name: Build and publish to TestPyPI
+    runs-on: ubuntu-latest
+
+  id-token: write
+
+jobs:
+  publish:
     runs-on: ubuntu-latest
 
     steps:
@@ -37,6 +47,10 @@ jobs:
 
       - name: Install build tools
         run: pip install build
+
+      - name: Install build dependencies
+        run: python -m pip install --upgrade pip build
+
 
       - name: Build package
         run: python -m build

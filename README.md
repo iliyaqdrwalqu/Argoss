@@ -972,6 +972,28 @@ ArgosKivyApp · ArgosWebEngine · MasterAuth · SensorBridge · SmarthomeOverrid
 
 ---
 
+## 📦 Публикация на TestPyPI (Trusted Publishing / OIDC)
+
+Пакет публикуется под именем **`argos-universalsigtrip`** через [Trusted Publishing](https://docs.pypi.org/trusted-publishers/) — без хранения `PYPI_TOKEN` в секретах.
+
+### Настройка на стороне TestPyPI
+1. Войдите на [test.pypi.org](https://test.pypi.org) и откройте настройки проекта `argos-universalsigtrip`.
+2. Перейдите в **Publishing → Trusted publishers → Add a new publisher**.
+3. Заполните:
+   - **Owner**: `labuaqlysnecy`
+   - **Repository**: `Argoss`
+   - **Workflow file name**: `publish_testpypi.yml`
+4. Сохраните.
+
+### Запуск публикации
+Workflow `.github/workflows/publish_testpypi.yml` запускается:
+- автоматически при публикации **GitHub Release**,
+- или вручную через **Actions → Publish to TestPyPI (OIDC) → Run workflow**.
+
+Никакие секреты (`PYPI_TOKEN`) для этого не требуются — GitHub выдаёт краткосрочный OIDC-токен напрямую.
+
+---
+
 ## ⚖️ Лицензия
 
 Apache License 2.0 — Всеволод / Argos Project, 2026
