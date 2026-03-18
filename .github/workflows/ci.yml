@@ -61,3 +61,10 @@ jobs:
           name: argos-src
           path: src/
           retention-days: 7
+
+      - name: Проверка сборки пакета (packaging sanity check)
+        run: |
+          pip install build
+          python -m build
+          echo "✅ Пакет argos-universalsigtrip собран успешно"
+          ls -lh dist/

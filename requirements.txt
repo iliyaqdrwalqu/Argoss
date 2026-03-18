@@ -3,14 +3,11 @@ google-genai>=1.0.0
 ibm-watsonx-ai>=1.3.42,<1.4.0; python_version < "3.11"
 ibm-watsonx-ai>=1.4.2; python_version >= "3.11"
 ollama>=0.4.9
-openai>=1.0.0
 requests>=2.31.0
 python-dotenv>=1.0.0
 
 # ── Telegram
 python-telegram-bot>=21.0
-aiogram>=3.0.0
-aiosqlite>=0.19.0
 
 # ── Web UI
 fastapi>=0.115.0
@@ -20,34 +17,23 @@ streamlit>=1.40.0
 # ── Системный мониторинг
 psutil>=5.9.0
 
-# ── Голос
+# ── Голос (опционально)
 pyttsx3>=2.90
 SpeechRecognition>=3.10.0
 faster-whisper>=1.0.3
-sounddevice>=0.4.6
-vosk>=0.3.45
-# PyAudio требует системную библиотеку PortAudio (apt install portaudio19-dev).
-# При проблемах с установкой используйте requirements-optional.txt.
-PyAudio>=0.2.14
 
 # ── Desktop GUI
 customtkinter>=5.2.0
-Pillow>=10.0.0
 
-# ── IoT / Промышленные протоколы
+# ── IoT
 paho-mqtt>=2.0.0
 pyserial>=3.5
-smbus2>=0.4.3
 
 # ── Безопасность
 cryptography>=42.0.0
-# pygost не распространяется через PyPI для Python 3.x; ГОСТ-реализация
-# использует встроенный fallback (SHA3 + AES-256). Для эталонной реализации:
-# pip install --index-url https://pypi.cypherpunks.su/ pygost
 
-# ── Парсинг / конфиг
+# ── Парсинг
 beautifulsoup4>=4.12.0
-PyYAML>=6.0.2
 
 # ── Версионирование
 packaging>=23.0
@@ -56,19 +42,3 @@ networkx>=3.2.1
 # ── ML (собственная модель)
 scikit-learn>=1.4.0
 numpy>=1.26.0
-sentence-transformers>=2.7.0
-
-# ── Сборка / архивирование
-py7zr>=0.22.0
-
-# ── Облако
-boto3>=1.34.0
-
-# ── Тестирование
-pytest>=8.0.0
-
-# =======================================================================
-# ОПЦИОНАЛЬНЫЕ ЗАВИСИМОСТИ (платформенные / специализированные)
-# Устанавливайте вручную только если используете соответствующий модуль.
-# Полный список: pip install -r requirements-optional.txt
-# =======================================================================

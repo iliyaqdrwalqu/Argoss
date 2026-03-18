@@ -1,6 +1,5 @@
 """quantum/logic.py — квантовые состояния Аргоса"""
 import time
-from typing import Optional
 
 try:
     import psutil
@@ -17,29 +16,28 @@ STATES = {
     "System":     {"creativity": 0.0, "window": 5,  "allow_root": True},
 }
 
-# Thresholds used by evidence-based state selection
-_CPU_PROTECTIVE  = 85.0
-_RAM_PROTECTIVE  = 90.0
-_CPU_UNSTABLE    = 70.0
-_CPU_IDLE        = 5.0    # below this threshold, user is considered inactive
-
 
 class QuantumEngine:
     def __init__(self):
         self.current = "Analytic"
         self._ts = time.time()
-        # Evidence dict used by homeostasis / activity detector integration
-        self.evidence: dict = {
-            "user_active": False,
-            "cpu": 0.0,
-            "ram": 0.0,
-        }
-
-    # ── Public API ──────────────────────────────────────────────────
 
     def generate_state(self) -> dict:
         self._auto_switch()
         return {"name": self.current, "vector": list(STATES[self.current].values())}
+
+    def _auto_switch(self):
+        if not _PSUTIL:
+            return
+        try:
+            cpu = psutil.cpu_percent(interval=0.1)
+            ram = psutil.virtual_memory().percent
+            if cpu > 85 or ram > 90:
+                self.current = "Protective"
+            elif cpu > 70:
+                self.current = "Unstable"
+        except Exception:
+            pass
 
     def set_state(self, name: str) -> str:
         if name in STATES:
@@ -55,33 +53,6 @@ class QuantumEngine:
             f"  Окно памяти: {s['window']}\n"
             f"  Root-команды: {s['allow_root']}"
         )
-
-    # ── Internal helpers ────────────────────────────────────────────
-
-    def _auto_switch(self) -> None:
-        if not _PSUTIL:
-            return
-        try:
-            cpu = psutil.cpu_percent(interval=0.1)
-            ram = psutil.virtual_memory().percent
-            if cpu > _CPU_PROTECTIVE or ram > _RAM_PROTECTIVE:
-                self.current = "Protective"
-            elif cpu > _CPU_UNSTABLE:
-                self.current = "Unstable"
-        except Exception:
-            pass
-
-    def _effective_metric(self, cpu: float = 0.0, ram: float = 0.0) -> float:
-        """Агрегированная метрика нагрузки [0..1] для детектора активности."""
-        return max(cpu, ram) / 100.0
-
-    def _is_user_active(self) -> bool:
-        """Определить активность пользователя (переопределяется в тестах)."""
-        return True
-
-    def _update_evidence(self) -> None:
-        """Обновить словарь evidence текущими показателями системы."""
-        self.evidence["user_active"] = self._is_user_active()
 
 
 ArgosQuantum = QuantumEngine

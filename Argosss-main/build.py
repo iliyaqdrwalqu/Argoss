@@ -330,10 +330,10 @@ print("\n[9/10] Создаю pyproject.toml...")
 _w("pyproject.toml", textwrap.dedent("""\
     [build-system]
     requires = ["setuptools>=68", "wheel"]
-    build-backend = "setuptools.backends.legacy:build"
+    build-backend = "setuptools.build_meta"
 
     [project]
-    name = "argos"
+    name = "argos-universalsigtrip"
     version = "1.4.0"
     description = "ARGOS — децентрализованная автономная ИИ-система"
     readme = "README.md"

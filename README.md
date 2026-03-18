@@ -922,6 +922,40 @@ docker-compose --profile apk run apk_builder
 
 ---
 
+## 📦 Публикация пакета на PyPI (Trusted Publisher / OIDC)
+
+Пакет называется **`argos-universalsigtrip`** и публикуется без токенов через
+[OIDC Trusted Publishing](https://docs.pypi.org/trusted-publishers/).
+
+### Установка пакета
+```bash
+pip install argos-universalsigtrip
+```
+
+### Разовая настройка Trusted Publisher (делается один раз)
+
+#### TestPyPI
+1. Зайти на [test.pypi.org](https://test.pypi.org) → Аккаунт → Publishing
+2. **Add a new pending publisher**:
+   - PyPI project name: `argos-universalsigtrip`
+   - Owner: `labuaqlysnecy`
+   - Repository: `Argoss`
+   - Workflow file name: `publish_testpypi.yml`
+   - Environment name: *(оставить пустым)*
+3. Запустить workflow вручную: **Actions → 📦 Publish to TestPyPI → Run workflow**
+
+#### PyPI (production)
+1. Зайти на [pypi.org](https://pypi.org) → Аккаунт → Publishing
+2. **Add a new pending publisher** с теми же параметрами, но:
+   - Workflow file name: `publish_pypi.yml`
+3. Создать GitHub Release (тег `v*.*.*`) или запустить вручную:
+   **Actions → 🚀 Publish to PyPI → Run workflow**
+
+> **Важно:** Для публикации не нужны никакие секреты (`PYPI_TOKEN`). Аутентификация
+> осуществляется автоматически через GitHub OIDC.
+
+---
+
 ## 📊 Аудит v1.4.0
 
 ```
@@ -935,6 +969,28 @@ Master Auth (MasterKeyAuth) · Biosphere DAG · IBM Quantum Bridge · JARVIS Eng
 Speculative Consensus v2 · Batch Idle Learning · P2P Role Routing
 ArgosKivyApp · ArgosWebEngine · MasterAuth · SensorBridge · SmarthomeOverride
 ```
+
+---
+
+## 📦 Публикация на TestPyPI (Trusted Publishing / OIDC)
+
+Пакет публикуется под именем **`argos-universalsigtrip`** через [Trusted Publishing](https://docs.pypi.org/trusted-publishers/) — без хранения `PYPI_TOKEN` в секретах.
+
+### Настройка на стороне TestPyPI
+1. Войдите на [test.pypi.org](https://test.pypi.org) и откройте настройки проекта `argos-universalsigtrip`.
+2. Перейдите в **Publishing → Trusted publishers → Add a new publisher**.
+3. Заполните:
+   - **Owner**: `labuaqlysnecy`
+   - **Repository**: `Argoss`
+   - **Workflow file name**: `publish_testpypi.yml`
+4. Сохраните.
+
+### Запуск публикации
+Workflow `.github/workflows/publish_testpypi.yml` запускается:
+- автоматически при публикации **GitHub Release**,
+- или вручную через **Actions → Publish to TestPyPI (OIDC) → Run workflow**.
+
+Никакие секреты (`PYPI_TOKEN`) для этого не требуются — GitHub выдаёт краткосрочный OIDC-токен напрямую.
 
 ---
 

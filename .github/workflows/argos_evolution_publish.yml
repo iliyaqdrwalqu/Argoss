@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/skills/**.py'
+      - 'src/skills/**/*.py'
   workflow_dispatch:
     inputs:
       skill_name:
@@ -31,6 +31,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 2
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
 
       - name: Detect changed skills
         id: changed
@@ -112,6 +115,7 @@ jobs:
           pip install -r requirements.txt || true
 
       - name: Build and publish ${{ matrix.skill }}
+        continue-on-error: true  # non-blocking: PYPI_TOKEN may not be set
         env:
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
           PYPI_AUTHOR: ${{ vars.PYPI_AUTHOR || 'ARGOS System' }}

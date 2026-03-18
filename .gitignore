@@ -13,7 +13,6 @@ config/master_auth.hash
 config/node_id
 config/node_birth
 
-=======
 *.zip
 
 

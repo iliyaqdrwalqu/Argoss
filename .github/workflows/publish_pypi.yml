@@ -1,0 +1,48 @@
+name: 🚀 Publish to PyPI
+
+# Publishes argos-universalsigtrip to PyPI via OIDC Trusted Publishing.
+# No PYPI_TOKEN required — authentication is handled by GitHub's OIDC provider.
+#
+# One-time setup on pypi.org:
+#   1. Log in to https://pypi.org
+#   2. Go to your account → Publishing → Add a new publisher
+#   3. Fill in:
+#      - PyPI project name: argos-universalsigtrip
+#      - Owner:             labuaqlysnecy
+#      - Repository:        Argoss
+#      - Workflow file:     publish_pypi.yml
+#      - Environment name:  (leave blank)
+#
+# Recommended: run publish_testpypi.yml first to validate the package on
+# TestPyPI before publishing to the production PyPI index.
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write  # Required for OIDC Trusted Publishing
+
+jobs:
+  publish-pypi:
+    name: Build and publish to PyPI
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: pip install build
+
+      - name: Build package
+        run: python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
