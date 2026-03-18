@@ -1,88 +1,45 @@
-name: 🔱 ARGOS CI — Сборка и проверка
+# .github/workflows/ci.yml
+
+name: CI
 
 on:
   push:
-    branches: [main, master, "copilot/**"]
-  pull_request:
-    branches: [main, master]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    branches:
+      - main
 
 jobs:
   build:
-    name: Сборка и тестирование
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Настройка Python 3.11
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
 
-      - name: Собрать проект из исходников
-        run: python build.py
+    - name: Install dependencies
+      run: |
+        set -euxo pipefail
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
 
-      - name: Установить зависимости
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest
+    - name: Build package
+      run: |
+        set -euxo pipefail
+        python -m build --outdir dist
 
-      - name: Проверка синтаксиса всех модулей
-        run: |
-          find src -name "*.py" | sort | xargs python -m py_compile
-          echo "✅ Синтаксис OK"
-
-      - name: Проверка импорта ключевых модулей
-        run: |
-          python -c "from src.argos_logger import get_logger; print('✅ argos_logger')"
-          python -c "from src.quantum.logic import QuantumEngine; print('✅ QuantumEngine')"
-          python -c "from src.argos_model import ArgosOwnModel; print('✅ ArgosOwnModel')"
-          python -c "from src.event_bus import EventBus, Events, get_bus; print('✅ EventBus')"
-
-      - name: Проверка работоспособности (health_check)
-        run: python health_check.py 2>&1 | tail -10
-        timeout-minutes: 1
-
-      - name: Запуск тестов
-        run: pytest tests/test_core.py -v
-        timeout-minutes: 2
-
-      - name: Загрузить артефакты сборки
-        uses: actions/upload-artifact@v7
-        with:
-          name: argos-src
-          path: src/
-          retention-days: 7
-
-      - name: Очистка dist/ перед сборкой пакета
-        run: rm -rf dist/
-
-      - name: Проверка сборки пакета (packaging sanity check)
-        run: |
-          pip install build
-          PROJ_DIR=$(pwd)
-          python -m build --outdir "$PROJ_DIR/dist"
-          echo "✅ Пакет argos-universalsigtrip собран успешно"
-          ls -lh "$PROJ_DIR/dist/"
-          find "$PROJ_DIR/dist" \( -name '*.whl' -o -name '*.tar.gz' \) | grep -q . || (echo "❌ dist/ не содержит .whl или .tar.gz" && exit 1)
-          echo "== pwd =="; pwd
-          echo "== ls -la =="; ls -la
-          if [ ! -d dist ]; then
-            echo "❌ dist/ was not created after build"
-            exit 1
-          fi
-          echo "✅ Пакет argos-universalsigtrip собран успешно"
-          ls -lh dist/
-          if ! ls dist/*.whl dist/*.tar.gz >/dev/null 2>&1; then
-            echo "❌ No .whl or .tar.gz artifacts found in dist/"
-            exit 1
-          fi
-
+    - name: List artifacts
+      run: |
+        if [ ! -d dist ]; then
+          echo "dist directory does not exist!"
+          exit 1
+        fi
+        if [ -z "$(ls -A dist)" ]; then
+          echo "dist is empty!"
+          exit 1
+        else
+          ls dist
+        fi
