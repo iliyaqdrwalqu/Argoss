@@ -1,0 +1,68 @@
+# .github/workflows/ci.yml
+# ПАТЧ v3:
+#   - Python 3.8 → 3.11
+#   - Убрана сборка dist (Argos — приложение, не pip-пакет)
+#   - Исключена папка Argosss-main/ (старый архив в репо со сломанным кодом)
+#   - actions обновлены до актуальных версий
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint-and-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          set -euxo pipefail
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Syntax check — все .py файлы
+        run: |
+          echo "=== Проверка синтаксиса Python ==="
+          find . -name "*.py" \
+            -not -path "./.git/*" \
+            -not -path "./build/*" \
+            -not -path "./.venv/*" \
+            -not -path "./Argosss-main/*" \
+            | sort | xargs python -m py_compile
+          echo "✅ Синтаксических ошибок не найдено"
+
+      - name: Import check — ключевые модули
+        run: |
+          echo "=== Проверка импортов ==="
+          python -c "import db_init; print('✅ db_init')"
+          python -c "from src.argos_logger import get_logger; print('✅ argos_logger')"
+          python -c "from src.event_bus import EventBus; print('✅ event_bus')"
+          echo "✅ Все ключевые модули импортируются"
+
+      - name: Check project structure
+        run: |
+          echo "=== Проверка структуры проекта ==="
+          for f in main.py genesis.py health_check.py requirements.txt; do
+            if [ -f "$f" ]; then
+              echo "✅ $f"
+            else
+              echo "❌ $f не найден!"
+              exit 1
+            fi
+          done
+          SRC_COUNT=$(find src/ -name "*.py" | wc -l)
+          echo "✅ Файлов в src/: $SRC_COUNT"
