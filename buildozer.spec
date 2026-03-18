@@ -13,7 +13,8 @@ source.include_exts = py,png,jpg,jpeg,kv,atlas,json,txt,md
 source.include_patterns = assets/*,config/*
 
 # Requirements (Kivy + Android-compatible deps only)
-requirements = python3==3.11.0,kivy==2.3.0,requests,pyjnius,android,paho-mqtt,python-dotenv
+# pyjnius >= 1.6.1 fixes Python-3 incompatibilities (no 'long' builtin)
+requirements = python3==3.11.0,kivy==2.3.0,requests,pyjnius==1.6.1,android,paho-mqtt,python-dotenv
 
 # Orientation
 orientation = portrait
@@ -38,3 +39,7 @@ icon.filename = %(source.dir)s/assets/argos_icon_512.png
 [buildozer]
 log_level = 2
 warn_on_root = 0
+
+# Hook script – patches pyjnius for Python 3 and disables Android-incompatible
+# Python stdlib C extensions (grp, _uuid, _lzma) before the build starts.
+p4a.hook = p4a_hook.py
