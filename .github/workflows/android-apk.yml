@@ -1,0 +1,97 @@
+name: 🤖 Android APK — build (debug)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  build-apk:
+    name: Build Android APK (debug)
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Install system dependencies (autotools / libffi / build prerequisites)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            autoconf automake libtool libtool-bin pkg-config m4 build-essential \
+            libffi-dev libssl-dev \
+            git zip unzip \
+            libsqlite3-dev zlib1g-dev \
+            libncurses5-dev libncursesw5-dev \
+            libbz2-dev liblzma-dev \
+            cmake ccache
+
+      - name: Cache ~/.buildozer (global Buildozer home)
+        uses: actions/cache@v5
+        with:
+          path: ~/.buildozer
+          key: buildozer-home-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-home-${{ runner.os }}-
+
+      - name: Cache .buildozer (local build cache)
+        uses: actions/cache@v5
+        with:
+          path: .buildozer
+          key: buildozer-local-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-local-${{ runner.os }}-
+
+      - name: Cache ~/.gradle
+        uses: actions/cache@v5
+        with:
+          path: ~/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Cache ~/.cache/pip
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/pip
+          key: pip-buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+          restore-keys: pip-buildozer-${{ runner.os }}-
+
+      - name: Install Python build tools
+        run: |
+          pip install --upgrade pip
+          pip install buildozer cython
+
+      - name: Build APK (debug)
+        timeout-minutes: 45
+        env:
+          BUILDOZER_WARN_ON_ROOT: "0"
+        run: buildozer android debug
+
+      - name: List built APK(s)
+        if: always()
+        run: find bin/ -name "*.apk" 2>/dev/null || echo "No APK files found in bin/"
+
+      - name: Upload APK artifact
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: argos-apk-debug-${{ github.run_number }}
+          path: bin/*.apk
+          if-no-files-found: warn
+          retention-days: 30

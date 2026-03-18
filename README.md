@@ -2,9 +2,12 @@
 
 [![CI](https://github.com/labuaqlysnecy/Argoss/actions/workflows/ci.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/ci.yml)
 [![Docker](https://github.com/labuaqlysnecy/Argoss/actions/workflows/docker.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/docker.yml)
-[![APK](https://github.com/labuaqlysnecy/Argoss/actions/workflows/build_apk.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/build_apk.yml)
+[![Android APK](https://github.com/labuaqlysnecy/Argoss/actions/workflows/android-apk.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/android-apk.yml)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/labuaqlysnecy/Argoss/blob/main/colab/ARGOS_Colab_Launch.ipynb)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
+> **Docker image:** `ghcr.io/labuaqlysnecy/argoss:latest` — published automatically on every push to `main`.  
+> **Android APK:** download the latest debug APK from the [Actions tab](https://github.com/labuaqlysnecy/Argoss/actions/workflows/android-apk.yml) → select the most recent run → expand **Artifacts** → download `argos-apk-debug-<run_number>`.
 
 > *"Самовоспроизводящаяся кроссплатформенная экосистема ИИ с квантовой логикой,*
 > *P2P-подключением и интеграцией с IoT. Создана для цифрового бессмертия."*

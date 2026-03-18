@@ -1,0 +1,56 @@
+# Dependencies / virtual envs
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+.env
+*.env
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+bin/
+.buildozer/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+
+# Local secrets / keys
+*.pem
+*.key
+*.p12
+secrets/
+config/private/
+
+# Git
+.git/
+
+# CI / GitHub
+.github/
+
+# Large media / data (not needed in image)
+data/
+docs/_build/
+*.mp4
+*.mp3
+*.wav
