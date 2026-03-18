@@ -1,0 +1,48 @@
+# ── ИИ-ядра
+# ПАТЧ: google-genai требует Python >= 3.9, добавлен маркер
+google-genai>=1.0.0; python_version >= "3.9"
+
+# ibm-watsonx-ai уже имеет правильные маркеры — не трогаем
+ibm-watsonx-ai>=1.3.42,<1.4.0; python_version < "3.11"
+ibm-watsonx-ai>=1.4.2; python_version >= "3.11"
+
+ollama>=0.4.9
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# ── Telegram
+python-telegram-bot>=21.0
+
+# ── Web UI
+fastapi>=0.115.0
+uvicorn>=0.30.0
+streamlit>=1.40.0
+
+# ── Системный мониторинг
+psutil>=5.9.0
+
+# ── Голос (опционально)
+pyttsx3>=2.90
+SpeechRecognition>=3.10.0
+faster-whisper>=1.0.3
+
+# ── Desktop GUI
+customtkinter>=5.2.0
+
+# ── IoT
+paho-mqtt>=2.0.0
+pyserial>=3.5
+
+# ── Безопасность
+cryptography>=42.0.0
+
+# ── Парсинг
+beautifulsoup4>=4.12.0
+
+# ── Версионирование
+packaging>=23.0
+networkx>=3.2.1
+
+# ── ML (собственная модель)
+scikit-learn>=1.4.0
+numpy>=1.26.0
