@@ -1,5 +1,5 @@
 # 👁️ ARGOS UNIVERSAL OS (v1.4.0)
-
+[![🖥️ Build ARGOS Windows setup.exe](https://github.com/labuaqlysnecy/Argoss/actions/workflows/build_windows.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/build_windows.yml)
 [![CI](https://github.com/labuaqlysnecy/Argoss/actions/workflows/ci.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/ci.yml)
 [![Docker](https://github.com/labuaqlysnecy/Argoss/actions/workflows/docker.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/docker.yml)
 [![Android APK](https://github.com/labuaqlysnecy/Argoss/actions/workflows/android-apk.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/android-apk.yml)
