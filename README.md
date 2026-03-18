@@ -3,7 +3,7 @@
 [![CI](https://github.com/labuaqlysnecy/Argoss/actions/workflows/ci.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/ci.yml)
 [![Docker](https://github.com/labuaqlysnecy/Argoss/actions/workflows/docker.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/docker.yml)
 [![APK](https://github.com/labuaqlysnecy/Argoss/actions/workflows/build_apk.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/build_apk.yml)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/labuaqlysnecy/Argoss/blob/main/argos_colab.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/labuaqlysnecy/Argoss/blob/main/colab/ARGOS_Colab_Launch.ipynb)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 > *"Самовоспроизводящаяся кроссплатформенная экосистема ИИ с квантовой логикой,*
@@ -887,7 +887,7 @@ docker-compose --profile apk run apk_builder
 
 ### Google Colab (без установки)
 
-1. Открой ноутбук: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/labuaqlysnecy/Argoss/blob/main/argos_colab.ipynb)
+1. Открой ноутбук: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/labuaqlysnecy/Argoss/blob/main/colab/ARGOS_Colab_Launch.ipynb)
 2. В последней ячейке выполни блок **APK-сборка**.
 
 ### GitHub Actions (автоматическая сборка)
@@ -898,26 +898,89 @@ docker-compose --profile apk run apk_builder
 
 ## ☁️ Google Colab — запуск без установки
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/labuaqlysnecy/Argoss/blob/main/argos_colab.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/labuaqlysnecy/Argoss/blob/main/colab/ARGOS_Colab_Launch.ipynb)
 
-Ноутбук [`argos_colab.ipynb`](argos_colab.ipynb) выполняет полную установку и запуск за ~5 минут:
+Ноутбук [`colab/ARGOS_Colab_Launch.ipynb`](colab/ARGOS_Colab_Launch.ipynb) запускает ARGOS в headless-режиме с HTTP Remote Control API и туннелем Cloudflare за ~3 минуты:
 
 | Шаг | Что делает |
 |-----|------------|
-| 1️⃣  Проверка окружения | Определяет GPU/CPU, Python-версию |
-| 2️⃣  Секреты | Загружает API-ключи из Colab Secrets или ячейки |
-| 3️⃣  Системные пакеты | `portaudio`, `ffmpeg`, `espeak`, `sqlite3` |
-| 4️⃣  Репозиторий | `git clone https://github.com/labuaqlysnecy/Argoss` |
-| 5️⃣  Python-модули | `pip install -r requirements.txt` |
-| 6️⃣  Ollama (опц.) | Локальный LLM, если Gemini-ключ не задан |
-| 7️⃣  Инициализация | `genesis.py` + проверка структуры |
-| 8️⃣  Старт | `main.py --no-gui` (Telegram + P2P) |
+| 1️⃣  Clone | `git clone https://github.com/labuaqlysnecy/Argoss` |
+| 2️⃣  Секреты | Загружает токены из Colab Secrets (🔑) или переменных окружения |
+| 3️⃣  Зависимости | `fastapi`, `uvicorn`, `psutil` + опционально APK-тулинг |
+| 4️⃣  Старт ARGOS | Headless core + FastAPI Dashboard на порту 8080 |
+| 5️⃣  Туннель | Cloudflare Tunnel (`cloudflared`) → публичный URL |
+| 6️⃣  Проверка | Health-check + образцы `curl` запросов |
+
+### Требуемые секреты (Colab → 🔑 Secrets)
+
+| Переменная | Обязательна | Описание |
+|---|---|---|
+| `ARGOS_REMOTE_TOKEN` | ✅ | Bearer-токен для авторизации API |
+| `TELEGRAM_BOT_TOKEN` | ⬜ | Токен Telegram-бота (опционально) |
+| `USER_ID` | ⬜ | Telegram User ID (опционально) |
+
+### Использование публичного URL в APK
+
+1. Запусти Colab-ноутбук → скопируй URL вида `https://xxxx.trycloudflare.com`.
+2. Открой APK на Android → вкладка **⚙️ Настройки**.
+3. Вставь URL в поле **Server URL** и токен в **Bearer Token**.
+4. Нажми **💾 Сохранить** → перейди на вкладку **📊 Dashboard** и нажми **🔄 Обновить**.
 
 ### Ручной запуск (один скрипт)
 
 ```bash
 # В ячейке Colab:
 !bash <(curl -fsSL https://raw.githubusercontent.com/labuaqlysnecy/Argoss/main/colab_start.sh)
+```
+
+---
+
+## 🔌 Remote Control API
+
+ARGOS предоставляет REST API для удалённого управления с Android APK.
+Запустить: `python main.py --no-gui --dashboard`
+
+### Эндпоинты
+
+| Метод | Путь | Авторизация | Описание |
+|-------|------|-------------|----------|
+| `GET` | `/api/health` | ❌ нет | Версия, uptime, статус |
+| `POST` | `/api/command` | ✅ Bearer | Выполнить команду ARGOS |
+| `GET` | `/api/events?limit=N` | ✅ Bearer | Последние события EventBus |
+| `GET` | `/api/status` | ❌ нет | CPU/RAM/диск/состояние |
+
+### Авторизация
+
+Установить переменную `ARGOS_REMOTE_TOKEN` — тогда все `/api/command` и `/api/events` запросы потребуют заголовок:
+
+```
+Authorization: Bearer <ARGOS_REMOTE_TOKEN>
+```
+
+Если `ARGOS_REMOTE_TOKEN` не задан — авторизация отключена.
+
+### Примеры
+
+```bash
+# Health check (без токена)
+curl https://xxxx.trycloudflare.com/api/health
+
+# Команда (с токеном)
+curl -X POST https://xxxx.trycloudflare.com/api/command \
+     -H "Authorization: Bearer mysecret" \
+     -H "Content-Type: application/json" \
+     -d '{"cmd": "статус"}'
+
+# События
+curl "https://xxxx.trycloudflare.com/api/events?limit=10" \
+     -H "Authorization: Bearer mysecret"
+```
+
+### Smoke-тест
+
+```bash
+ARGOS_BASE_URL=http://localhost:8080 ARGOS_REMOTE_TOKEN=mysecret \
+    python scripts/smoke_api.py
 ```
 
 ---
