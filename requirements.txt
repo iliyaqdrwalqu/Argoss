@@ -41,7 +41,9 @@ smbus2>=0.4.3
 
 # ── Безопасность
 cryptography>=42.0.0
-pygost>=5.4.0
+# pygost не распространяется через PyPI для Python 3.x; ГОСТ-реализация
+# использует встроенный fallback (SHA3 + AES-256). Для эталонной реализации:
+# pip install --index-url https://pypi.cypherpunks.su/ pygost
 
 # ── Парсинг / конфиг
 beautifulsoup4>=4.12.0

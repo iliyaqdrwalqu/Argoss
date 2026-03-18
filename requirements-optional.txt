@@ -58,3 +58,9 @@ python-daemon>=2.3.2
 
 # ── Тестирование (dev)
 # pytest уже перенесён в основной requirements.txt
+
+# ── ГОСТ-криптография (эталонная реализация, src/security/gost_cipher.py)
+# pygost распространяется через авторский индекс, НЕ PyPI.
+# При отсутствии используется встроенный fallback (SHA3 + AES-256-ECB с ГОСТ-меткой).
+# Установка:
+#   pip install --index-url https://pypi.cypherpunks.su/ pygost
