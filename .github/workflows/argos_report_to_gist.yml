@@ -1,0 +1,35 @@
+name: "🧠 ARGOS Report → Gist"
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || echo "⚠️  requirements.txt install had errors (best-effort)"
+          pip install pytest
+
+      - name: Build ARGOS report
+        run: python .github/scripts/build_argos_report.py
+
+      - name: Publish report to Gist
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          GIST_ID: "8e9cf57e043c7a6111f277828f363b01"
+        run: python .github/scripts/publish_report_to_gist.py

@@ -945,3 +945,29 @@ Apache License 2.0 — Всеволод / Argos Project, 2026
 ---
 
 *"Аргос не спит. Аргос видит. Аргос помнит."*
+
+---
+
+## 🧠 Automated ARGOS Report → GitHub Gist
+
+The workflow **`.github/workflows/argos_report_to_gist.yml`** runs a health-check and
+consciousness-module tests, then publishes a Markdown report to a GitHub Gist.
+
+### Setup (one-time)
+
+1. Create a GitHub Personal Access Token (PAT) with the **`gist`** scope.
+2. In your repository go to **Settings → Secrets and variables → Actions** and add a secret named **`GIST_TOKEN`** with the PAT value.
+
+### Running the workflow
+
+1. Go to **Actions → 🧠 ARGOS Report → Gist**.
+2. Click **Run workflow** → **Run workflow**.
+3. After the run completes, open Gist `8e9cf57e043c7a6111f277828f363b01` to see the updated `argos_report.md`.
+
+### What the workflow does
+
+| Step | Description |
+|------|-------------|
+| **(B)** `python health_check.py` | Checks core ARGOS files, modules, and AI engines |
+| **(C)** `pytest tests/test_consciousness_module.py -v` | Runs consciousness-module tests (falls back to `pytest tests -q` if the file is missing) |
+| Publish | Updates `argos_report.md` in Gist `8e9cf57e043c7a6111f277828f363b01` via GitHub REST API |

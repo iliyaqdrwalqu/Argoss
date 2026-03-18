@@ -24,3 +24,6 @@ config/node_birth
 logs/
 .DS_Store
 builds/
+
+# Argos generated reports (created during CI, not committed)
+reports/
