@@ -66,5 +66,15 @@ jobs:
         run: |
           pip install build
           python -m build
+          echo "== pwd =="; pwd
+          echo "== ls -la =="; ls -la
+          if [ ! -d dist ]; then
+            echo "❌ dist/ was not created after build"
+            exit 1
+          fi
           echo "✅ Пакет argos-universalsigtrip собран успешно"
           ls -lh dist/
+          if ! ls dist/*.whl dist/*.tar.gz >/dev/null 2>&1; then
+            echo "❌ No .whl or .tar.gz artifacts found in dist/"
+            exit 1
+          fi
