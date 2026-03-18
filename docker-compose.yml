@@ -23,7 +23,6 @@ services:
       - argos_data:/app/data
     ports:
       - "8080:8080"
-    network_mode: "host"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "sh", "-c",
