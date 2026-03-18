@@ -1,5 +1,6 @@
 # ── Build stage ──────────────────────────────────────────────────────────────
-FROM python:3.11-slim AS builder
+# Pinned digest for python:3.11-slim — update periodically for security patches
+FROM python:3.11-slim@sha256:cb1dc19bc60c926431b6f45aa28f9a4cf3da1a498c8cf5d1c0516f3ac8b90bab AS builder
 
 WORKDIR /build
 
@@ -18,7 +19,8 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
-FROM python:3.11-slim AS runtime
+# Pinned digest for python:3.11-slim — update periodically for security patches
+FROM python:3.11-slim@sha256:cb1dc19bc60c926431b6f45aa28f9a4cf3da1a498c8cf5d1c0516f3ac8b90bab AS runtime
 
 LABEL org.opencontainers.image.title="Argos Universal OS" \
       org.opencontainers.image.description="Autonomous AI platform — headless/server mode" \
