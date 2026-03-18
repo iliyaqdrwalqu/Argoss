@@ -16,3 +16,11 @@ config/node_birth
 =======
 *.zip
 
+
+# === Argos GitGuard ===
+*.key
+*.pem
+*.p12
+logs/
+.DS_Store
+builds/
