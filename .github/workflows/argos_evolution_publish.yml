@@ -83,7 +83,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload model artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: argos-model
           path: data/argos_model/

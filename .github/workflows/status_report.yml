@@ -96,7 +96,7 @@ jobs:
 
       - name: Upload Markdown report as artifact
         if: always() && steps.fmt.outputs.format != 'json'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: argos-status-report-md-${{ github.run_number }}
           path: status_report.md
@@ -105,7 +105,7 @@ jobs:
 
       - name: Upload JSON report as artifact
         if: always() && steps.fmt.outputs.format == 'json'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: argos-status-report-json-${{ github.run_number }}
           path: status_report.json

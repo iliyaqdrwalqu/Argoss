@@ -56,7 +56,7 @@ jobs:
         timeout-minutes: 2
 
       - name: Загрузить артефакты сборки
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: argos-src
           path: src/

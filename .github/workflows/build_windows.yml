@@ -91,7 +91,7 @@ jobs:
           dir installer\Output\
 
       - name: Upload ARGOS.exe artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: argos-windows-exe-${{ github.run_number }}
           path: dist\ARGOS.exe
@@ -99,7 +99,7 @@ jobs:
           retention-days: 30
 
       - name: Upload setup.exe artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: argos-windows-setup-${{ github.run_number }}
           path: installer\Output\ARGOS_Setup.exe
