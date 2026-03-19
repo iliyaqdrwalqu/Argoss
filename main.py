@@ -25,6 +25,11 @@ import threading
 # "option --dashboard not recognized". Должно быть ДО любого импорта Kivy.
 os.environ.setdefault("KIVY_NO_ARGS", "1")
 
+# [FIX-9] Подавляем окно Kivy при не-mobile запуске
+if "--mobile" not in sys.argv:
+    os.environ.setdefault("KIVY_NO_ENV_CONFIG", "1")
+    os.environ.setdefault("KIVY_HEADLESS", "1")
+
 from dotenv import load_dotenv
 load_dotenv()
 
