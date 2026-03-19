@@ -4,13 +4,13 @@
     "type": "interval",
     "command": "тест",
     "interval_sec": 3600,
-    "last_run": 1773632797.1657405
+    "last_run": 1773890163.8293993
   },
   {
     "id": 2,
     "type": "interval",
     "command": "статус системы",
     "interval_sec": 7200,
-    "last_run": 1773632797.2874267
+    "last_run": 1773886133.954117
   }
 ]

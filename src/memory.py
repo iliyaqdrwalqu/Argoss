@@ -1,15 +1,21 @@
 """
 memory.py — Долгосрочная память Аргоса
   Запоминает факты о пользователе, предпочтения, заметки.
-    Хранится в SQLite + векторный индекс (RAG) + граф знаний.
+  Хранится в SQLite + векторный индекс (RAG) + граф знаний.
+
+ПАТЧ [FIX-VECTOR-IMPORT]:
+  ArgosVectorStore импортируется лениво (внутри __init__) чтобы
+  не падать при отсутствии chromadb/sentence-transformers.
+  Если VectorStore недоступен — работаем только на SQLite.
 """
+from __future__ import annotations
+
 import os
 import sqlite3
 import time
 import re
 import hashlib
 from src.argos_logger import get_logger
-from src.knowledge.vector_store import ArgosVectorStore
 
 log = get_logger("argos.memory")
 DB_PATH = "data/memory.db"
@@ -19,8 +25,17 @@ class ArgosMemory:
     def __init__(self):
         os.makedirs("data", exist_ok=True)
         self.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-        self.vector = ArgosVectorStore(path="data/chroma")
         self.grist = None
+
+        # [FIX-VECTOR-IMPORT] Ленивый импорт — не падаем если chromadb нет
+        self.vector = None
+        try:
+            from src.knowledge.vector_store import ArgosVectorStore
+            self.vector = ArgosVectorStore(path="data/chroma")
+            log.info("VectorStore: %s", self.vector.mode)
+        except Exception as e:
+            log.warning("VectorStore недоступен (только SQLite): %s", e)
+
         self._init_db()
         self._warmup_vector_index()
 
@@ -41,21 +56,26 @@ class ArgosMemory:
                 ts    TEXT DEFAULT (datetime('now','localtime'))
             );
             CREATE TABLE IF NOT EXISTS reminders (
-                id       INTEGER PRIMARY KEY AUTOINCREMENT,
-                text     TEXT NOT NULL,
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                text      TEXT NOT NULL,
                 remind_at REAL NOT NULL,
-                done     INTEGER DEFAULT 0
+                done      INTEGER DEFAULT 0
             );
-
             CREATE TABLE IF NOT EXISTS knowledge_edges (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                subject    TEXT NOT NULL,
-                predicate  TEXT NOT NULL,
-                object     TEXT NOT NULL,
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                subject     TEXT NOT NULL,
+                predicate   TEXT NOT NULL,
+                object      TEXT NOT NULL,
                 object_type TEXT DEFAULT '',
-                source     TEXT DEFAULT 'memory',
-                ts         TEXT DEFAULT (datetime('now','localtime')),
+                source      TEXT DEFAULT 'memory',
+                ts          TEXT DEFAULT (datetime('now','localtime')),
                 UNIQUE(subject, predicate, object)
+            );
+            CREATE TABLE IF NOT EXISTS chat_history (
+                id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                role TEXT,
+                text TEXT,
+                ts   TEXT DEFAULT (datetime('now','localtime'))
             );
         """)
         self._ensure_fact_columns()
@@ -63,350 +83,338 @@ class ArgosMemory:
         log.debug("Memory DB инициализирована.")
 
     def _ensure_fact_columns(self):
-        migrations = [
-            "ALTER TABLE facts ADD COLUMN utility_signal REAL DEFAULT 0",
-            "ALTER TABLE facts ADD COLUMN expires_at REAL DEFAULT 0",
-            "ALTER TABLE facts ADD COLUMN access_count INTEGER DEFAULT 0",
-            "ALTER TABLE facts ADD COLUMN last_accessed REAL DEFAULT 0",
-            "ALTER TABLE facts ADD COLUMN fingerprint TEXT DEFAULT ''",
-        ]
-        for sql in migrations:
-            try:
-                self.conn.execute(sql)
-            except Exception:
-                pass
-
-    @staticmethod
-    def _normalize_text(text: str) -> str:
-        return re.sub(r"\s+", " ", (text or "").strip().lower())
-
-    def _fingerprint(self, category: str, key: str, value: str) -> str:
-        base = f"{self._normalize_text(category)}|{self._normalize_text(key)}|{self._normalize_text(value)}"
-        return hashlib.sha1(base.encode("utf-8")).hexdigest()
-
-    def _default_signal(self, category: str, key: str, value: str) -> float:
-        score = 1.0
-        cat = (category or "").lower()
-        k = (key or "").lower()
-        v = (value or "")
-        if cat in {"user", "system", "profile"}:
-            score += 1.2
-        if len(v) > 80:
-            score += 0.3
-        if any(token in k for token in ["ключ", "token", "api", "предпочт", "цель", "огранич"]):
-            score += 0.8
-        if cat == "noise":
-            score = 0.2
-        return round(score, 2)
-
-    def _cleanup_noise(self, ttl_seconds: int = 72 * 3600):
+        """Добавляет колонки если БД старой версии."""
         try:
-            threshold = time.time() - ttl_seconds
-            self.conn.execute(
-                "DELETE FROM facts WHERE category='noise' AND ((expires_at > 0 AND expires_at <= ?) OR (expires_at = 0 AND strftime('%s', ts) <= ?))",
-                (time.time(), threshold),
-            )
-            self.conn.commit()
-        except Exception as e:
-            log.warning("Memory noise cleanup: %s", e)
+            cols = {r[1] for r in self.conn.execute("PRAGMA table_info(facts)")}
+            if "category" not in cols:
+                self.conn.execute("ALTER TABLE facts ADD COLUMN category TEXT DEFAULT 'general'")
+                self.conn.commit()
+        except Exception:
+            pass
 
     def _warmup_vector_index(self):
-        try:
-            rows = self.conn.execute(
-                "SELECT category, key, value, ts FROM facts ORDER BY id DESC LIMIT 1000"
-            ).fetchall()
-            for cat, key, val, ts in rows:
-                text = f"[{cat}] {key}: {val}"
-                doc_id = f"fact_{cat}_{key}".replace(" ", "_")
-                self.vector.upsert(text, metadata={"kind": "fact", "category": cat, "ts": ts}, doc_id=doc_id)
-
-            notes = self.conn.execute(
-                "SELECT id, title, body, ts FROM notes ORDER BY id DESC LIMIT 500"
-            ).fetchall()
-            for note_id, title, body, ts in notes:
-                text = f"Заметка: {title}\n{body}"
-                self.vector.upsert(text, metadata={"kind": "note", "note_id": note_id, "ts": ts}, doc_id=f"note_{note_id}")
-        except Exception as e:
-            log.warning("Vector warmup: %s", e)
-
-    def _index_text(self, text: str, metadata: dict | None = None, doc_id: str | None = None):
-        if not text:
+        """Индексирует существующие факты в VectorStore при старте."""
+        if not self.vector:
             return
         try:
-            self.vector.upsert(text, metadata=metadata or {}, doc_id=doc_id)
+            facts = self.get_all_facts()
+            for cat, key, val, _ in facts[:200]:
+                self.vector.upsert(
+                    text=f"{cat}.{key}: {val}",
+                    metadata={"category": cat, "key": key},
+                    doc_id=f"fact_{cat}_{key}",
+                )
+            log.debug("VectorStore: проиндексировано %d фактов", len(facts))
         except Exception as e:
-            log.warning("Vector index: %s", e)
+            log.warning("VectorStore warmup: %s", e)
 
-    def attach_grist(self, grist):
-        self.grist = grist
+    # ─────────────────────────────────────────────────────────────────────
+    # ФАКТЫ
+    # ─────────────────────────────────────────────────────────────────────
 
-    def _mirror_to_grist(self, category: str, key: str, value: str):
-        if not self.grist or not getattr(self.grist, "_configured", False):
-            return
+    def remember(self, key: str, value: str, category: str = "general") -> str:
+        """Сохраняет факт в память."""
         try:
-            self.grist.save(f"memory:{category}:{key}", value)
-        except Exception as e:
-            log.warning("Grist mirror memory: %s", e)
-
-    # ── ФАКТЫ ──────────────────────────────────────────────
-    def remember(self, key: str, value: str, category: str = "user", ttl_sec: int | None = None) -> str:
-        """Запомнить факт. 'аргос, запомни: я люблю Python'"""
-        norm_key = self._normalize_text(key)
-        norm_val = self._normalize_text(value)
-        if not norm_key or not norm_val:
-            return "❌ Нечего запоминать: пустой ключ или значение."
-
-        fp = self._fingerprint(category, key, value)
-        self._cleanup_noise()
-
-        dup = self.conn.execute(
-            "SELECT id, value FROM facts WHERE category=? AND key=?",
-            (category, key),
-        ).fetchone()
-        if dup and self._normalize_text(dup[1]) == norm_val:
             self.conn.execute(
-                "UPDATE facts SET access_count=access_count+1, last_accessed=? WHERE id=?",
-                (time.time(), dup[0]),
+                "INSERT OR REPLACE INTO facts (category, key, value) VALUES (?, ?, ?)",
+                (category, key, value),
             )
             self.conn.commit()
-            return f"ℹ️ Уже в памяти: {key} → {value}"
-
-        expires_at = float(time.time() + ttl_sec) if ttl_sec and ttl_sec > 0 else 0.0
-        signal = self._default_signal(category, key, value)
-        self.conn.execute(
-            "INSERT INTO facts (category, key, value, utility_signal, expires_at, access_count, last_accessed, fingerprint) VALUES (?,?,?,?,?,?,?,?) "
-            "ON CONFLICT(category,key) DO UPDATE SET "
-            "value=excluded.value, ts=datetime('now','localtime'), utility_signal=excluded.utility_signal, "
-            "expires_at=excluded.expires_at, access_count=facts.access_count+1, last_accessed=excluded.last_accessed, fingerprint=excluded.fingerprint",
-            (category, key, value, signal, expires_at, 1, time.time(), fp)
-        )
-        self.conn.commit()
-        self._index_text(
-            f"[{category}] {key}: {value}",
-            metadata={"kind": "fact", "category": category, "key": key},
-            doc_id=f"fact_{category}_{key}".replace(" ", "_")
-        )
-        self._extract_graph_from_fact(key, value, category=category)
-        self._mirror_to_grist(category, key, value)
-        log.info("Запомнил [%s] %s = %s", category, key, value)
-        return f"✅ Запомнил: {key} → {value}"
-
-    def recall(self, key: str, category: str = "user") -> str | None:
-        row = self.conn.execute(
-            "SELECT id, value FROM facts WHERE category=? AND key=?", (category, key)
-        ).fetchone()
-        if not row:
-            return None
-        self.conn.execute(
-            "UPDATE facts SET access_count=access_count+1, utility_signal=utility_signal+0.1, last_accessed=? WHERE id=?",
-            (time.time(), row[0]),
-        )
-        self.conn.commit()
-        return row[1]
-
-    def forget(self, key: str, category: str = "user") -> str:
-        self.conn.execute("DELETE FROM facts WHERE category=? AND key=?", (category, key))
-        self.conn.commit()
-        return f"🗑️ Удалено из памяти: {key}"
-
-    def search_semantic(self, query: str, top_k: int = 5) -> list[dict]:
-        try:
-            return self.vector.search(query, top_k=top_k)
+            # Индексируем в векторной памяти
+            if self.vector:
+                try:
+                    self.vector.upsert(
+                        text=f"{category}.{key}: {value}",
+                        metadata={"category": category, "key": key},
+                        doc_id=f"fact_{category}_{key}",
+                    )
+                except Exception:
+                    pass
+            return f"✅ Запомнил: [{category}] {key} = {value}"
         except Exception as e:
-            log.warning("RAG search: %s", e)
-            return []
-
-    def get_rag_context(self, query: str, top_k: int = 4) -> str:
-        hits = self.search_semantic(query, top_k=top_k)
-        if not hits:
-            return ""
-        lines = ["[RAG: релевантные воспоминания]"]
-        for item in hits:
-            text = (item.get("text") or "").strip().replace("\n", " ")
-            score = float(item.get("score", 0.0))
-            if not text:
-                continue
-            lines.append(f"  ({score:.2f}) {text[:220]}")
-        return "\n".join(lines)
-
-    def get_all_facts(self, category: str = None) -> list:
-        self._cleanup_noise()
-        if category:
-            return self.conn.execute(
-                "SELECT category, key, value, ts FROM facts "
-                "WHERE category=? AND (expires_at=0 OR expires_at>?) "
-                "ORDER BY utility_signal DESC, ts DESC",
-                (category, time.time())
-            ).fetchall()
-        return self.conn.execute(
-            "SELECT category, key, value, ts FROM facts "
-            "WHERE (expires_at=0 OR expires_at>?) "
-            "ORDER BY utility_signal DESC, category, key",
-            (time.time(),)
-        ).fetchall()
-
-    def get_context(self) -> str:
-        """Возвращает строку контекста для вставки в ИИ-запрос."""
-        facts = self.get_all_facts()
-        if not facts:
-            return ""
-        lines = ["Известные факты о пользователе и системе:"]
-        for cat, key, val, _ in facts[:60]:
-            lines.append(f"  [{cat}] {key}: {val}")
-        return "\n".join(lines)
-
-    def log_dialogue(self, role: str, message: str, state: str = ""):
-        text = (message or "").strip()
-        if not text:
-            return
-        text = text[:2000]
-        self._index_text(
-            f"[{role}] {text}",
-            metadata={"kind": "dialogue", "role": role, "state": state},
-            doc_id=None
-        )
-
-    def format_memory(self) -> str:
-        facts = self.get_all_facts()
-        edges_count = self.conn.execute("SELECT COUNT(*) FROM knowledge_edges").fetchone()[0]
-        lines = ["🧠 ДОЛГОСРОЧНАЯ ПАМЯТЬ АРГОСА:"]
-        lines.append(f"  • Vector store: {self.vector.status()}")
-        lines.append(f"  • Граф связей: {edges_count} ребер")
-        if not facts:
-            lines.append("  • Фактов пока нет")
-            return "\n".join(lines)
-        prev_cat = None
-        for cat, key, val, ts in facts:
-            if cat != prev_cat:
-                lines.append(f"\n  [{cat.upper()}]")
-                prev_cat = cat
-            lines.append(f"    • {key}: {val}  ({ts[:16]})")
-        return "\n".join(lines)
-
-    # ── ЗАМЕТКИ ────────────────────────────────────────────
-    def add_note(self, title: str, body: str) -> str:
-        self.conn.execute(
-            "INSERT INTO notes (title, body) VALUES (?,?)", (title, body)
-        )
-        self.conn.commit()
-        row = self.conn.execute("SELECT last_insert_rowid()")
-        note_id = row.fetchone()[0]
-        self._index_text(
-            f"Заметка: {title}\n{body}",
-            metadata={"kind": "note", "note_id": note_id, "title": title},
-            doc_id=f"note_{note_id}"
-        )
-        return f"📝 Заметка сохранена: '{title}'"
-
-    def get_notes(self, limit: int = 10) -> str:
-        rows = self.conn.execute(
-            "SELECT id, title, ts FROM notes ORDER BY id DESC LIMIT ?", (limit,)
-        ).fetchall()
-        if not rows:
-            return "📭 Заметок нет."
-        lines = [f"📝 ЗАМЕТКИ ({len(rows)}):"]
-        for rid, title, ts in rows:
-            lines.append(f"  #{rid} [{ts[:16]}] {title}")
-        return "\n".join(lines)
-
-    def read_note(self, note_id: int) -> str:
-        row = self.conn.execute(
-            "SELECT title, body, ts FROM notes WHERE id=?", (note_id,)
-        ).fetchone()
-        if not row:
-            return f"❌ Заметка #{note_id} не найдена."
-        title, body, ts = row
-        return f"📝 #{note_id} [{ts[:16]}] {title}\n\n{body}"
-
-    def delete_note(self, note_id: int) -> str:
-        self.conn.execute("DELETE FROM notes WHERE id=?", (note_id,))
-        self.conn.commit()
-        return f"🗑️ Заметка #{note_id} удалена."
-
-    # ── НАПОМИНАНИЯ ────────────────────────────────────────
-    def add_reminder(self, text: str, seconds_from_now: int) -> str:
-        remind_at = time.time() + seconds_from_now
-        self.conn.execute(
-            "INSERT INTO reminders (text, remind_at) VALUES (?,?)", (text, remind_at)
-        )
-        self.conn.commit()
-        import datetime
-        dt = datetime.datetime.fromtimestamp(remind_at).strftime("%H:%M %d.%m")
-        return f"⏰ Напоминание установлено на {dt}: {text}"
-
-    def check_reminders(self) -> list[str]:
-        now  = time.time()
-        rows = self.conn.execute(
-            "SELECT id, text FROM reminders WHERE remind_at<=? AND done=0", (now,)
-        ).fetchall()
-        fired = []
-        for rid, text in rows:
-            self.conn.execute("UPDATE reminders SET done=1 WHERE id=?", (rid,))
-            fired.append(f"⏰ НАПОМИНАНИЕ: {text}")
-        if fired:
-            self.conn.commit()
-        return fired
+            return f"❌ Ошибка сохранения: {e}"
 
     def parse_and_remember(self, text: str) -> str:
-        """'аргос, запомни что я люблю Python' → сохраняет факт"""
-        original = (text or "").strip()
-        t = original.lower()
+        """Парсит текст вида 'ключ: значение' и запоминает."""
+        text = text.strip()
+        if ":" in text:
+            key, _, val = text.partition(":")
+            return self.remember(key.strip(), val.strip())
+        return self.remember("заметка", text)
 
-        pet_match = re.search(r"(?:мой|моя)\s+кот\s*[—\-:]?\s*([A-Za-zА-Яа-я0-9_\-]+)", original, re.IGNORECASE)
-        if pet_match:
-            pet_name = pet_match.group(1).strip()
-            self.remember("pet_name", pet_name, category="user")
-            self.add_graph_edge("User", "has_pet", f"Cat:{pet_name}", object_type="Cat", source="nlp")
-            return f"✅ Запомнил: ваш кот — {pet_name}. Связь добавлена в граф знаний."
+    def get_all_facts(self) -> list[tuple]:
+        try:
+            rows = self.conn.execute(
+                "SELECT category, key, value, ts FROM facts ORDER BY ts DESC LIMIT 500"
+            ).fetchall()
+            return rows
+        except Exception:
+            return []
 
-        for pref in ["запомни что ", "запомни: ", "запомни ", "я "]:
-            if t.startswith(pref):
-                rest = original[len(pref):]
-                if ":" in rest:
-                    key, val = rest.split(":", 1)
-                    return self.remember(key.strip(), val.strip())
-                return self.remember("факт", rest.strip())
-        return self.remember("факт", original)
+    def get_fact(self, key: str, category: str = "general") -> str | None:
+        try:
+            row = self.conn.execute(
+                "SELECT value FROM facts WHERE category=? AND key=?",
+                (category, key),
+            ).fetchone()
+            return row[0] if row else None
+        except Exception:
+            return None
 
-    # ── ГРАФ ЗНАНИЙ ───────────────────────────────────────
-    def add_graph_edge(self, subject: str, predicate: str, obj: str,
-                       object_type: str = "", source: str = "memory") -> str:
-        self.conn.execute(
-            "INSERT OR IGNORE INTO knowledge_edges (subject, predicate, object, object_type, source) VALUES (?,?,?,?,?)",
-            (subject.strip(), predicate.strip(), obj.strip(), object_type.strip(), source.strip())
-        )
-        self.conn.commit()
-        self._index_text(
-            f"GRAPH: {subject} -[{predicate}]-> {obj}",
-            metadata={"kind": "graph", "subject": subject, "predicate": predicate, "object": obj, "object_type": object_type}
-        )
-        return f"🔗 Связь добавлена: {subject} -[{predicate}]-> {obj}"
-
-    def _extract_graph_from_fact(self, key: str, value: str, category: str = "user"):
-        key_l = (key or "").strip().lower()
-        val = (value or "").strip()
-        if not key_l or not val:
-            return
-
-        if key_l in {"кот", "мой кот", "pet", "pet_name", "питомец"}:
-            self.add_graph_edge("User", "has_pet", f"Cat:{val}", object_type="Cat", source="fact")
-            return
-
-        self.add_graph_edge("User", f"has_{key_l}", val, object_type="Fact", source=category)
-
-    def graph_report(self, limit: int = 20) -> str:
-        rows = self.conn.execute(
-            "SELECT subject, predicate, object, object_type, ts FROM knowledge_edges ORDER BY id DESC LIMIT ?",
-            (limit,)
-        ).fetchall()
-        if not rows:
-            return "🕸️ Граф знаний пуст."
-
-        lines = [f"🕸️ ГРАФ ЗНАНИЙ ({len(rows)}):"]
-        for s, p, o, obj_t, ts in rows:
-            ot = f" [{obj_t}]" if obj_t else ""
-            lines.append(f"  • {s} -[{p}]-> {o}{ot} ({ts[:16]})")
+    def format_memory(self) -> str:
+        """Форматирует всю память для показа пользователю."""
+        facts = self.get_all_facts()
+        if not facts:
+            return "🧠 Память пуста."
+        lines = ["🧠 ПАМЯТЬ АРГОСА:"]
+        current_cat = None
+        for cat, key, val, ts in facts[:50]:
+            if cat != current_cat:
+                lines.append(f"\n  [{cat}]")
+                current_cat = cat
+            lines.append(f"    {key}: {val}")
         return "\n".join(lines)
 
-    def close(self):
-        self.conn.close()
+    # ─────────────────────────────────────────────────────────────────────
+    # ПОИСК (RAG)
+    # ─────────────────────────────────────────────────────────────────────
+
+    def get_rag_context(self, query: str, top_k: int = 5) -> str:
+        """Семантический поиск по памяти."""
+        if self.vector:
+            try:
+                results = self.vector.search(query, top_k=top_k)
+                if results:
+                    lines = ["📚 Из памяти:"]
+                    for r in results:
+                        lines.append(f"  • {r['text'][:120]}")
+                    return "\n".join(lines)
+            except Exception as e:
+                log.warning("RAG search vector: %s", e)
+
+        # Fallback — keyword поиск по SQLite
+        return self._sqlite_search(query, top_k)
+
+    def _sqlite_search(self, query: str, top_k: int = 5) -> str:
+        words = re.findall(r"\w{3,}", query.lower())
+        if not words:
+            return ""
+        try:
+            rows = self.conn.execute(
+                "SELECT category, key, value FROM facts"
+            ).fetchall()
+            scored = []
+            for cat, key, val in rows:
+                text = f"{cat} {key} {val}".lower()
+                score = sum(1 for w in words if w in text)
+                if score > 0:
+                    scored.append((score, cat, key, val))
+            scored.sort(reverse=True)
+            if not scored:
+                return ""
+            lines = ["📚 Из памяти (ключевой поиск):"]
+            for _, cat, key, val in scored[:top_k]:
+                lines.append(f"  • [{cat}] {key}: {val[:100]}")
+            return "\n".join(lines)
+        except Exception:
+            return ""
+
+    # ─────────────────────────────────────────────────────────────────────
+    # ЗАМЕТКИ
+    # ─────────────────────────────────────────────────────────────────────
+
+    def add_note(self, title: str, body: str) -> str:
+        try:
+            self.conn.execute(
+                "INSERT INTO notes (title, body) VALUES (?, ?)", (title, body)
+            )
+            self.conn.commit()
+            return f"✅ Заметка сохранена: {title}"
+        except Exception as e:
+            return f"❌ Ошибка: {e}"
+
+    def get_notes(self, limit: int = 10) -> str:
+        try:
+            rows = self.conn.execute(
+                "SELECT id, title, body, ts FROM notes ORDER BY ts DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+            if not rows:
+                return "📝 Заметок нет."
+            lines = ["📝 ЗАМЕТКИ:"]
+            for row_id, title, body, ts in rows:
+                lines.append(f"  [{row_id}] {title}: {body[:80]}  ({ts[:16]})")
+            return "\n".join(lines)
+        except Exception as e:
+            return f"❌ Ошибка: {e}"
+
+    def delete_note(self, note_id: int) -> str:
+        try:
+            self.conn.execute("DELETE FROM notes WHERE id=?", (note_id,))
+            self.conn.commit()
+            return f"✅ Заметка {note_id} удалена."
+        except Exception as e:
+            return f"❌ Ошибка: {e}"
+
+    def read_note(self, note_id: int) -> str:
+        try:
+            row = self.conn.execute(
+                "SELECT title, body, ts FROM notes WHERE id=?", (note_id,)
+            ).fetchone()
+            if not row:
+                return f"❌ Заметка #{note_id} не найдена."
+            title, body, ts = row
+            return f"📝 #{note_id} [{ts[:16]}] {title}\n\n{body}"
+        except Exception as e:
+            return f"❌ Ошибка: {e}"
+
+    # ─────────────────────────────────────────────────────────────────────
+    # НАПОМИНАНИЯ
+    # ─────────────────────────────────────────────────────────────────────
+
+    def add_reminder(self, text: str, seconds_from_now: int) -> str:
+        try:
+            import datetime as _dt
+            remind_at = time.time() + seconds_from_now
+            self.conn.execute(
+                "INSERT INTO reminders (text, remind_at) VALUES (?,?)",
+                (text, remind_at),
+            )
+            self.conn.commit()
+            dt = _dt.datetime.fromtimestamp(remind_at).strftime("%H:%M %d.%m")
+            return f"⏰ Напоминание на {dt}: {text}"
+        except Exception as e:
+            return f"❌ Ошибка: {e}"
+
+    def check_reminders(self) -> list[str]:
+        """Возвращает сработавшие напоминания и помечает как выполненные."""
+        try:
+            now  = time.time()
+            rows = self.conn.execute(
+                "SELECT id, text FROM reminders WHERE remind_at<=? AND done=0",
+                (now,),
+            ).fetchall()
+            fired = []
+            for rid, text in rows:
+                self.conn.execute("UPDATE reminders SET done=1 WHERE id=?", (rid,))
+                fired.append(f"⏰ НАПОМИНАНИЕ: {text}")
+            if fired:
+                self.conn.commit()
+            return fired
+        except Exception:
+            return []
+
+    # ─────────────────────────────────────────────────────────────────────
+    # ГРАФ ЗНАНИЙ — алиасы для совместимости с core.py
+    # ─────────────────────────────────────────────────────────────────────
+
+    def add_graph_edge(self, subject: str, predicate: str, obj: str,
+                       object_type: str = "", source: str = "user") -> str:
+        """Алиас add_edge — совместимость с оригинальным memory.py."""
+        return self.add_edge(subject, predicate, obj, object_type, source)
+
+    def graph_report(self, limit: int = 20) -> str:
+        """Алиас get_graph — совместимость с core.py."""
+        return self.get_graph(limit)
+
+    # ─────────────────────────────────────────────────────────────────────
+    # RECALL / FORGET — совместимость с core.py
+    # ─────────────────────────────────────────────────────────────────────
+
+    def recall(self, key: str, category: str = "user") -> str | None:
+        try:
+            row = self.conn.execute(
+                "SELECT value FROM facts WHERE category=? AND key=?",
+                (category, key),
+            ).fetchone()
+            return row[0] if row else None
+        except Exception:
+            return None
+
+    def forget(self, key: str, category: str = "user") -> str:
+        try:
+            self.conn.execute(
+                "DELETE FROM facts WHERE category=? AND key=?", (category, key)
+            )
+            self.conn.commit()
+            return f"🗑️ Забыл: {key}"
+        except Exception as e:
+            return f"❌ Ошибка: {e}"
+
+    # ─────────────────────────────────────────────────────────────────────
+    # ИСТОРИЯ ДИАЛОГА
+    # ─────────────────────────────────────────────────────────────────────
+
+    def add_to_history(self, role: str, text: str) -> None:
+        try:
+            self.conn.execute(
+                "INSERT INTO chat_history (role, text) VALUES (?, ?)", (role, text)
+            )
+            self.conn.commit()
+        except Exception:
+            pass
+
+    def get_history(self, limit: int = 20) -> list[dict]:
+        try:
+            rows = self.conn.execute(
+                "SELECT role, text, ts FROM chat_history ORDER BY ts DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+            return [{"role": r, "text": t, "ts": ts} for r, t, ts in reversed(rows)]
+        except Exception:
+            return []
+
+    # ─────────────────────────────────────────────────────────────────────
+    # ГРАФ ЗНАНИЙ
+    # ─────────────────────────────────────────────────────────────────────
+
+    def add_edge(self, subject: str, predicate: str, obj: str,
+                 obj_type: str = "", source: str = "user") -> str:
+        try:
+            self.conn.execute(
+                "INSERT OR IGNORE INTO knowledge_edges "
+                "(subject, predicate, object, object_type, source) VALUES (?,?,?,?,?)",
+                (subject, predicate, obj, obj_type, source),
+            )
+            self.conn.commit()
+            return f"✅ Связь: {subject} —[{predicate}]→ {obj}"
+        except Exception as e:
+            return f"❌ {e}"
+
+    def get_graph(self, limit: int = 20) -> str:
+        try:
+            rows = self.conn.execute(
+                "SELECT subject, predicate, object FROM knowledge_edges "
+                "ORDER BY ts DESC LIMIT ?", (limit,)
+            ).fetchall()
+            if not rows:
+                return "🕸️ Граф знаний пуст."
+            lines = ["🕸️ ГРАФ ЗНАНИЙ:"]
+            for s, p, o in rows:
+                lines.append(f"  {s} —[{p}]→ {o}")
+            return "\n".join(lines)
+        except Exception as e:
+            return f"❌ {e}"
+
+    # ─────────────────────────────────────────────────────────────────────
+    # ВСПОМОГАТЕЛЬНОЕ
+    # ─────────────────────────────────────────────────────────────────────
+
+    def attach_grist(self, grist) -> None:
+        self.grist = grist
+
+    def status(self) -> str:
+        try:
+            facts_count = self.conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0]
+            notes_count = self.conn.execute("SELECT COUNT(*) FROM notes").fetchone()[0]
+            hist_count  = self.conn.execute("SELECT COUNT(*) FROM chat_history").fetchone()[0]
+            vec_status  = self.vector.status() if self.vector else "⚠️ VectorStore: недоступен"
+            return (
+                f"🧠 ПАМЯТЬ АРГОСА:\n"
+                f"  Фактов: {facts_count}\n"
+                f"  Заметок: {notes_count}\n"
+                f"  История диалогов: {hist_count}\n"
+                f"  {vec_status}"
+            )
+        except Exception as e:
+            return f"❌ Ошибка статуса памяти: {e}"

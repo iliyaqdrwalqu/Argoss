@@ -1,106 +1,104 @@
 """
-python-for-android build hook.
-
-Applies patches required to build pyjnius with modern Cython + Python 3:
-  - Replaces the Python-2-only ``long`` built-in with ``int`` in
-    ``jnius_utils.pxi`` so Cython 3.x / Python 3 can compile it.
-
-Also disables Python stdlib C extensions that cannot be built against the
-Android NDK (no grp/group, no libuuid, no liblzma in the NDK sysroot):
-  - grp
-  - _uuid
-  - _lzma
+p4a_hook.py — Хук Python-for-Android.
+Патчит pyjnius для Python 3, отключает несовместимые C-модули,
+и добавляет FileProvider в AndroidManifest.xml.
 """
-
-from __future__ import annotations
-
-import glob
 import os
 import re
+from pathlib import Path
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+def fix_pyjnius(arch):
+    """Фикс pyjnius для Python 3 (убирает использование 'long')."""
+    site_packages = arch.get_env_vars().get("PYTHONPATH", "")
+    for sp in site_packages.split(":"):
+        jnius_src = Path(sp) / "jnius" / "jnius_utils.pxi"
+        if jnius_src.exists():
+            content = jnius_src.read_text(errors="replace")
+            if "long(" in content:
+                content = content.replace("long(", "int(")
+                jnius_src.write_text(content)
+                print("[p4a_hook] pyjnius: убрал long() → int()")
 
-def _patch_long_to_int(path: str) -> None:
-    """Replace ``isinstance(x, long)`` with ``isinstance(x, int)`` in *path*."""
-    with open(path, "r", encoding="utf-8") as fh:
-        src = fh.read()
-    patched = re.sub(
-        r"\bisinstance\(([^,]+),\s*long\)",
-        r"isinstance(\1, int)",
-        src,
-    )
-    if patched == src:
+
+def disable_broken_modules(arch):
+    """Отключает C-модули несовместимые с Android."""
+    broken = ["grp", "_uuid", "_lzma"]
+    site_packages = arch.get_env_vars().get("PYTHONPATH", "")
+    for sp in site_packages.split(":"):
+        for mod in broken:
+            path = Path(sp) / f"{mod}.py"
+            if not path.exists():
+                path.write_text(
+                    f'''# {mod} disabled on Android\nraise ImportError("{mod} not available on Android")\n'''
+                )
+
+
+def add_file_provider(build_dir):
+    """Добавляет FileProvider в AndroidManifest.xml."""
+    manifest_path = Path(build_dir) / "AndroidManifest.xml"
+    if not manifest_path.exists():
+        # Ищем в .buildozer
+        for p in Path(".buildozer").rglob("AndroidManifest.xml"):
+            manifest_path = p
+            break
+
+    if not manifest_path.exists():
+        print("[p4a_hook] AndroidManifest.xml не найден — пропускаю FileProvider")
         return
-    with open(path, "w", encoding="utf-8") as fh:
-        fh.write(patched)
-    print(f"[p4a_hook] Patched 'long' -> 'int' in: {path}")
+
+    content = manifest_path.read_text(encoding="utf-8", errors="replace")
+
+    if "FileProvider" in content:
+        print("[p4a_hook] FileProvider уже в манифесте")
+        return
+
+    provider_xml = '''
+    <provider
+        android:name="androidx.core.content.FileProvider"
+        android:authorities="${applicationId}.provider"
+        android:exported="false"
+        android:grantUriPermissions="true">
+        <meta-data
+            android:name="android.support.FILE_PROVIDER_PATHS"
+            android:resource="@xml/file_paths" />
+    </provider>
+'''
+
+    # Вставляем перед </application>
+    if "</application>" in content:
+        content = content.replace("</application>", provider_xml + "</application>", 1)
+        manifest_path.write_text(content, encoding="utf-8")
+        print("[p4a_hook] FileProvider добавлен в AndroidManifest.xml")
+    else:
+        print("[p4a_hook] </application> не найден — FileProvider не добавлен")
 
 
-# ---------------------------------------------------------------------------
-# p4a hook entry-points
-# ---------------------------------------------------------------------------
-
-def before_build(toolchain) -> None:
-    """Called by p4a before any recipe is built."""
-    _fix_pyjnius(toolchain)
-    _disable_android_incompatible_modules(toolchain)
-
-
-# ---------------------------------------------------------------------------
-# Patch implementations
-# ---------------------------------------------------------------------------
-
-def _fix_pyjnius(toolchain) -> None:
-    """
-    Patch jnius_utils.pxi to remove the Python-2-only ``long`` built-in.
-
-    Cython 3 raises ``undeclared name not builtin: long`` because ``long``
-    no longer exists in Python 3.  Replace every occurrence of
-    ``isinstance(x, long)`` with ``isinstance(x, int)``.
-    """
-    storage = getattr(toolchain, "storage_dir", None) or ""
-    search_roots = [
-        storage,
-        os.path.expanduser("~/.buildozer"),
-        os.getcwd(),
-    ]
-    for root in search_roots:
-        if not root:
-            continue
-        for match in glob.glob(
-            os.path.join(root, "**", "jnius_utils.pxi"), recursive=True
-        ):
-            _patch_long_to_int(match)
+def add_file_paths_xml(dist_dir):
+    """Создаёт res/xml/file_paths.xml в дистрибутиве."""
+    xml_dir = Path(dist_dir) / "res" / "xml"
+    xml_dir.mkdir(parents=True, exist_ok=True)
+    file_paths = xml_dir / "file_paths.xml"
+    if not file_paths.exists():
+        file_paths.write_text('''<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <external-path name="external_files" path="." />
+    <files-path name="internal_files" path="." />
+    <cache-path name="cache_files" path="." />
+    <external-cache-path name="external_cache" path="." />
+    <external-files-path name="external_app_files" path="." />
+</paths>
+''', encoding="utf-8")
+        print("[p4a_hook] file_paths.xml создан")
 
 
-def _disable_android_incompatible_modules(toolchain) -> None:
-    """
-    Prevent Python-for-Android from trying to build stdlib C extensions
-    that depend on headers / libraries absent from the Android NDK sysroot:
+def source_dirs(arch):
+    fix_pyjnius(arch)
+    disable_broken_modules(arch)
 
-      * grp   – POSIX group-database functions (setgrent / getgrent …)
-      * _uuid – requires libuuid (not bundled with Android NDK)
-      * _lzma – requires liblzma / lzma.h (not bundled with Android NDK)
-    """
-    incompatible = {"grp", "_uuid", "_lzma"}
-    try:
-        from pythonforandroid.recipes.python3 import Python3Recipe  # type: ignore[import]
 
-        existing = set(getattr(Python3Recipe, "disabled_modules", []))
-        new_disabled = sorted(existing | incompatible)
-        Python3Recipe.disabled_modules = new_disabled
-        added = incompatible - existing
-        if added:
-            print(
-                f"[p4a_hook] Added to Python3Recipe.disabled_modules: "
-                f"{', '.join(sorted(added))}"
-            )
-    except Exception as exc:  # noqa: BLE001
-        print(
-                f"[p4a_hook] WARNING: Could not patch Python3Recipe.disabled_modules "
-                f"({exc}). The build may still succeed if p4a already excludes "
-                f"grp/_uuid/_lzma for Android, but watch for NDK linker errors."
-            )
+def postbuild_arch(arch, api, **kwargs):
+    build_dir = getattr(arch, "build_dir", "")
+    dist_dir  = getattr(arch, "dist_dir",  ".buildozer/android/platform/build")
+    add_file_provider(build_dir or dist_dir)
+    add_file_paths_xml(dist_dir)

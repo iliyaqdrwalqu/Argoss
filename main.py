@@ -12,12 +12,18 @@ main.py — ArgosUniversal OS v1.4.0
   [FIX-5] Режимы запуска разбираются через if/elif (нет конфликта флагов)
   [FIX-6] ArgosOrchestrator() и boot_*() обёрнуты в try/except с понятными сообщениями
   [FIX-7] Исправлен импорт db_init → src.db_init (ModuleNotFoundError на Windows)
+  [FIX-8] KIVY_NO_ARGS=1 — Kivy больше не перехватывает --dashboard, --no-gui и др.
 """
 
 import os
 import sys
 import signal
 import threading
+
+# [FIX-8] Отключаем перехват аргументов командной строки Kivy.
+# Без этого Kivy ловит --dashboard, --no-gui и т.д. и падает с ошибкой
+# "option --dashboard not recognized". Должно быть ДО любого импорта Kivy.
+os.environ.setdefault("KIVY_NO_ARGS", "1")
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -134,7 +140,13 @@ class ArgosOrchestrator:
             log.warning("Ошибка при shutdown: %s", e)
 
     def boot_desktop(self):
-        from src.interface.gui import ArgosGUI
+        # [FIX-GUI-KIVY] Ленивый импорт — Kivy не инициализируется при запуске customtkinter
+        try:
+            from src.interface.gui import ArgosGUI
+        except ImportError:
+            from src.interface.kivy_gui import ArgosGUI
+            log.warning("customtkinter не найден — Kivy GUI")
+
         self._start_telegram()
 
         is_root = self.root.is_root if self.root else False

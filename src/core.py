@@ -43,7 +43,24 @@ from src.argos_logger                import get_logger
 from dotenv import load_dotenv
 load_dotenv()
 
+# [FIX-OLLAMA-AUTO] Автоподбор модели Ollama под железо системы
+try:
+    from src.ollama_autoselect import autoselect as _ollama_autoselect
+    _OLLAMA_AUTOSELECT_OK = True
+except Exception:
+    _OLLAMA_AUTOSELECT_OK = False
+
 log = get_logger("argos.core")
+# [MIND v2] Модули разума
+try:
+    from src.mind.dreamer import Dreamer as _Dreamer
+    from src.mind.evolution_engine import EvolutionEngine as _EvolutionEngine
+    from src.mind.self_model_v2 import SelfModelV2 as _SelfModelV2
+    _MIND_OK = True
+except Exception as _mind_err:
+    _MIND_OK = False
+    _mind_err_msg = str(_mind_err)
+
 
 _DEFAULT_PROVIDER_COOLDOWN_SECONDS = 600
 _MIN_PROVIDER_COOLDOWN_SECONDS = 60
@@ -257,6 +274,31 @@ class ArgosCore:
         self._init_grist()
         self._init_cloud_object_storage()
         self._init_own_model()
+        
+        # [MIND v2] Инициализация модулей разума
+        self.self_model_v2  = None
+        self.dreamer        = None
+        self.evolution_engine = None
+        if _MIND_OK:
+            try:
+                self.self_model_v2 = _SelfModelV2(self)
+                log.info("SelfModelV2: OK")
+            except Exception as e:
+                log.warning("SelfModelV2: %s", e)
+            try:
+                self.dreamer = _Dreamer(self)
+                self.dreamer.start()
+                log.info("Dreamer: OK")
+            except Exception as e:
+                log.warning("Dreamer: %s", e)
+            try:
+                self.evolution_engine = _EvolutionEngine(self)
+                log.info("EvolutionEngine: OK")
+            except Exception as e:
+                log.warning("EvolutionEngine: %s", e)
+        else:
+            log.warning("Mind modules недоступны: %s", _mind_err_msg)
+
         log.info("ArgosCore FINAL v2.0 инициализирован.")
 
     # ═══════════════════════════════════════════════════════
@@ -1296,6 +1338,16 @@ class ArgosCore:
             self.db.log_chat("argos", answer, engine)
 
         self.say(answer)
+        
+        # [MIND v2] Обновляем самосознание после каждого ответа
+        if self.self_model_v2:
+            try:
+                self.self_model_v2.on_interaction(
+                    user_text, answer,
+                    success="❌" not in answer and "ошибка" not in answer.lower()
+                )
+            except Exception:
+                pass
         return {"answer": answer, "state": engine}
 
     async def process_logic_async(self, user_text: str, admin, flasher) -> dict:
@@ -1342,6 +1394,80 @@ class ArgosCore:
             return self.curiosity.stop()
         if self.curiosity and any(k in t for k in ["любопытство сейчас", "curiosity now"]):
             return self.curiosity.ask_now()
+
+
+        # [FIX-OLLAMA-AUTO] Команды управления Ollama autoselect
+        if any(w in t for w in ["ollama статус", "ollama автовыбор", "ollama модель"]):
+            try:
+                from src.ollama_autoselect import status_report
+                return {"answer": status_report(
+                    self.ollama_url.replace("/api/generate", "")
+                )}
+            except Exception as e:
+                return {"answer": f"Ollama: {e}"}
+
+        if any(w in t for w in ["ollama авто", "подобрать модель ollama", "выбери модель"]):
+            try:
+                from src.ollama_autoselect import autoselect
+                result = autoselect(
+                    ollama_url=self.ollama_url.replace("/api/generate", ""),
+                    force=True,
+                )
+                return {"answer": result["message"]}
+            except Exception as e:
+                return {"answer": f"Ollama autoselect: {e}"}
+
+        # [MIND v2] Команды разума
+        if any(w in t for w in ["кто я", "who am i", "самосознание", "интроспекция"]):
+            if self.self_model_v2:
+                return {"answer": self.self_model_v2.who_am_i()}
+            return {"answer": "SelfModelV2 недоступна."}
+
+        if any(w in t for w in ["биография", "моя история", "что было"]):
+            if self.self_model_v2:
+                return {"answer": self.self_model_v2.biography.timeline()}
+            return {"answer": "Биография недоступна."}
+
+        if any(w in t for w in ["компетенции", "мои способности", "что умею"]):
+            if self.self_model_v2:
+                return {"answer": self.self_model_v2.competency.report()}
+            return {"answer": "Профиль компетенций недоступен."}
+
+        if any(w in t for w in ["эмоция", "настроение аргоса", "как ты себя чувствуешь"]):
+            if self.self_model_v2:
+                return {"answer": f"Моё состояние: {self.self_model_v2.emotion.describe()}"}
+            return {"answer": "Эмоциональная модель недоступна."}
+
+        if any(w in t for w in ["dreamer статус", "осмысление", "сновидение"]):
+            if self.dreamer:
+                return {"answer": self.dreamer.status()}
+            return {"answer": "Dreamer недоступен."}
+
+        if any(w in t for w in ["dreamer запустить", "начни осмысление"]):
+            if self.dreamer:
+                return {"answer": self.dreamer.force_cycle()}
+            return {"answer": "Dreamer недоступен."}
+
+        if any(w in t for w in ["эволюция статус", "история эволюции"]):
+            if self.evolution_engine:
+                return {"answer": self.evolution_engine.status() + "\n" +
+                        self.evolution_engine.history()}
+            return {"answer": "EvolutionEngine недоступен."}
+
+        if any(w in t for w in ["эволюция запустить", "эволюционируй", "улучшись"]):
+            if self.evolution_engine:
+                return {"answer": self.evolution_engine.evolve()}
+            return {"answer": "EvolutionEngine недоступен."}
+
+        if any(w in t for w in ["слабые места", "где я ошибаюсь", "мои слабости"]):
+            if self.evolution_engine:
+                return {"answer": self.evolution_engine.detect_weaknesses()}
+            return {"answer": "EvolutionEngine недоступен."}
+
+        if any(w in t for w in ["сохрани себя", "сохрани модель"]):
+            if self.self_model_v2:
+                self.self_model_v2.save()
+                return {"answer": "✅ Модель самосознания сохранена."}
 
         if self.git_ops and any(k in t for k in ["git статус", "гит статус", "git status"]):
             return self.git_ops.status()

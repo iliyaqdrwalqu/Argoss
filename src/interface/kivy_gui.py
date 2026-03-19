@@ -1,26 +1,24 @@
 """
-kivy_gui.py — ARGOS v1.3 Kivy UI (Smooth Glass / Sovereign Emerald)
+kivy_gui.py — ARGOS v1.4.0 Kivy UI (Sovereign Emerald)
 Запуск: python main.py --mobile
+
+ПАТЧ [FIX-KV-INDENT]:
+  Исправлен многострочный text: в KV-строке.
+  Kivy-парсер не поддерживает реальные переносы строк внутри text: значений.
+  Заменено на экранированный \\n.
 """
 try:
     from kivy.app import App
-    from kivy.uix.floatlayout import FloatLayout
     from kivy.uix.boxlayout import BoxLayout
-    from kivy.uix.label import Label
-    from kivy.uix.button import Button
-    from kivy.uix.textinput import TextInput
-    from kivy.uix.scrollview import ScrollView
-    from kivy.uix.gridlayout import GridLayout
     from kivy.lang import Builder
     from kivy.clock import Clock
-    from kivy.graphics import Color, Rectangle
     from kivy.core.window import Window
     KIVY_OK = True
 except ImportError:
     KIVY_OK = False
 
 if KIVY_OK:
-    Builder.load_string('''
+    Builder.load_string(r'''
 <ArgosRoot>:
     canvas.before:
         Color:
@@ -33,16 +31,14 @@ if KIVY_OK:
     padding: "12dp"
     spacing: "8dp"
 
-    # Заголовок
     Label:
-        text: "🔱  ARGOS SOVEREIGN v1.33"
+        text: "\u0422\u0435\u043a\u0441\u0442: ARGOS SOVEREIGN v1.4.0"
         size_hint_y: None
         height: "48dp"
         font_size: "20sp"
         bold: True
         color: 0, 1, 0.4, 1
 
-    # Быстрые кнопки
     GridLayout:
         cols: 3
         spacing: "8dp"
@@ -50,36 +46,35 @@ if KIVY_OK:
         height: "110dp"
 
         Button:
-            text: "🛡️ ROOT"
+            text: "ROOT"
             background_color: 0, 0.5, 0.35, 0.4
             on_press: app.quick_cmd("root статус")
         Button:
-            text: "📡 NFC"
+            text: "NFC"
             background_color: 0, 0.5, 0.35, 0.4
             on_press: app.quick_cmd("nfc статус")
         Button:
-            text: "🔵 BT"
+            text: "BT"
             background_color: 0, 0.5, 0.35, 0.4
             on_press: app.quick_cmd("bt статус")
         Button:
-            text: "📊 STATUS"
+            text: "STATUS"
             background_color: 0, 0.45, 0.6, 0.4
             on_press: app.quick_cmd("статус системы")
         Button:
-            text: "🌐 AETHER"
+            text: "AETHER"
             background_color: 0, 0.45, 0.6, 0.4
             on_press: app.quick_cmd("shell ping -c 1 8.8.8.8")
         Button:
-            text: "⚛️ QUANTUM"
+            text: "QUANTUM"
             background_color: 0.3, 0, 0.6, 0.4
             on_press: app.quick_cmd("квантовое состояние")
 
-    # Лог / консоль
     ScrollView:
         size_hint_y: 0.45
         Label:
             id: console
-            text: "> Initializing v1.33...\n> All systems operational."
+            text: "> Initializing v1.4.0...\\n> All systems operational."
             size_hint_y: None
             height: self.texture_size[1]
             halign: "left"
@@ -89,7 +84,6 @@ if KIVY_OK:
             text_size: self.width, None
             markup: True
 
-    # Ввод команд
     BoxLayout:
         size_hint_y: None
         height: "48dp"
@@ -106,7 +100,7 @@ if KIVY_OK:
             on_text_validate: app.send_cmd()
 
         Button:
-            text: "▶"
+            text: ">"
             size_hint_x: None
             width: "60dp"
             background_color: 0, 0.5, 0.35, 1
@@ -117,16 +111,19 @@ if KIVY_OK:
         pass
 
     class ArgosGUI(App):
-        def __init__(self, core=None, **kwargs):
+        def __init__(self, core=None, admin=None, flasher=None,
+                     location: str = "", **kwargs):
             super().__init__(**kwargs)
-            self.core = core
-            self._history = []
+            self.core     = core
+            self.admin    = admin
+            self.flasher  = flasher
+            self._location = location
+            self._history: list[str] = []
             self.core_callback = None
 
         def build(self):
             Window.clearcolor = (0, 0.02, 0.04, 1)
             self.root_node = ArgosRoot()
-            # Запускаем авто-обновление состояния
             Clock.schedule_interval(self._tick, 5)
             return self.root_node
 
@@ -141,6 +138,10 @@ if KIVY_OK:
             if c:
                 c.text += "\n[color=00ff66]>[/color] " + str(text)
 
+        def _append(self, text: str, color: str = ""):
+            """Совместимость с boot_desktop()."""
+            self.log(text)
+
         def quick_cmd(self, cmd: str):
             self.log(f"[color=aaffcc]{cmd}[/color]")
             self._execute(cmd)
@@ -153,64 +154,80 @@ if KIVY_OK:
                     return
                 inp.text = ""
                 self._history.append(cmd)
-                self.log(f"[color=00ffff]▶ {cmd}[/color]")
+                self.log(f"[color=00ffff]> {cmd}[/color]")
                 self._execute(cmd)
             except Exception as e:
-                self.log(f"[color=ff4444]Ошибка ввода: {e}[/color]")
+                self.log(f"[color=ff4444]Ошибка: {e}[/color]")
 
         def _execute(self, cmd: str):
             import threading
+
             def _run():
                 try:
                     if self.core_callback is not None:
                         answer = self.core_callback(cmd)
                     elif self.core:
                         r = self.core.process(cmd)
-                        answer = r.get("answer", str(r)) if isinstance(r, dict) else str(r)
+                        answer = (r.get("answer", str(r))
+                                  if isinstance(r, dict) else str(r))
                     else:
                         answer = f"{cmd}: Local Execute"
-                    Clock.schedule_once(lambda dt: self.log(answer[:300]), 0)
+                    Clock.schedule_once(
+                        lambda dt: self.log(str(answer)[:400]), 0
+                    )
                 except Exception as e:
-                    Clock.schedule_once(lambda dt, err=e: self.log(f"[color=ff4444]❌ {err}[/color]"), 0)
+                    Clock.schedule_once(
+                        lambda dt, err=e: self.log(
+                            f"[color=ff4444]ERR: {err}[/color]"
+                        ), 0,
+                    )
+
             threading.Thread(target=_run, daemon=True).start()
 
         def execute(self, cmd: str):
-            """Public command entrypoint for external callbacks/UI bindings."""
             self._execute(cmd)
 
         def _tick(self, dt):
-            """Авто-обновление состояния каждые 5 сек."""
             if self.core and hasattr(self.core, "quantum"):
                 try:
                     state = self.core.quantum.state
-                    self.log(f"[color=888888]⚛ {state}[/color]")
+                    self.log(f"[color=888888]Q:{state}[/color]")
                 except Exception:
                     pass
 
-        def run(self):
-            super().run()
+        def mainloop(self):
+            """Алиас для совместимости с boot_desktop()."""
+            self.run()
 
-    # Alias for compatibility with mobile_ui.py
+    # Алиас для mobile_ui.py
     ArgosKivyApp = ArgosGUI
 
 else:
     # Заглушка если Kivy не установлен
     class ArgosGUI:
-        def __init__(self, core=None, **kwargs):
-            self.core = core
+        def __init__(self, core=None, admin=None, flasher=None,
+                     location: str = "", **kwargs):
+            self.core    = core
+            self.admin   = admin
+            self.flasher = flasher
             self.core_callback = None
 
         def run(self):
-            print("⚠️  Kivy не установлен. Запусти: pip install kivy")
-            print("    Используй --no-gui режим.")
+            print("Kivy не установлен: pip install kivy")
+            print("Используй: python main.py --no-gui")
 
-        def log(self, text):
+        def mainloop(self):
+            self.run()
+
+        def log(self, text: str):
             print(f"[GUI] {text}")
+
+        def _append(self, text: str, color: str = ""):
+            print(text)
 
         def execute(self, cmd: str):
             if self.core_callback:
                 return self.core_callback(cmd)
             self.log(f"{cmd}: Local Execute")
 
-    # Alias for compatibility with mobile_ui.py
     ArgosKivyApp = ArgosGUI
