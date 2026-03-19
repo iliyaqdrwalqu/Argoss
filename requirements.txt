@@ -78,8 +78,9 @@ pyrtlsdr>=0.3.0                 # SDR-приёмник (src/connectivity/air_sni
 # ── Промышленные протоколы (industrial_protocols.py)
 xknx>=3.1.0                     # KNX умный дом
 opcua>=0.98.13                  # OPC UA
-python-mbus>=0.9                 # M-Bus теплосчётчики
-
+# M-Bus теплосчётчики
+# python-mbus>=0.9
+git+https://github.com/MichaSchaefer/python-mbus.git@master
 # ── Квантовые вычисления (src/quantum/ibm_bridge.py, src/quantum/oracle.py)
 qiskit>=1.1.0
 qiskit-aer>=0.14.0
@@ -95,10 +96,10 @@ python-daemon>=2.3.2
 # boto3 уже перенесён в основной requirements.txt
 
 # ── Тестирование (dev)
-# pytest уже перенесён в основной requirements.txt
+ pytest уже перенесён в основной requirements.txt
 
 # ── ГОСТ-криптография (эталонная реализация, src/security/gost_cipher.py)
 # pygost распространяется через авторский индекс, НЕ PyPI.
 # При отсутствии используется встроенный fallback (SHA3 + AES-256-ECB с ГОСТ-меткой).
 # Установка:
-#   pip install --index-url https://pypi.cypherpunks.su/ pygost
+ pip install --index-url https://pypi.cypherpunks.su/ pygost
