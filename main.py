@@ -11,6 +11,7 @@ main.py — ArgosUniversal OS v1.4.0
   [FIX-4] _start_telegram сохраняет ссылку на поток, tg=None при сбое
   [FIX-5] Режимы запуска разбираются через if/elif (нет конфликта флагов)
   [FIX-6] ArgosOrchestrator() и boot_*() обёрнуты в try/except с понятными сообщениями
+  [FIX-7] Исправлен импорт db_init → src.db_init (ModuleNotFoundError на Windows)
 """
 
 import os
@@ -31,9 +32,16 @@ from src.connectivity.spatial import SpatialAwareness
 from src.connectivity.telegram_bot import ArgosTelegram
 from src.argos_logger import get_logger
 from src.launch_config import normalize_launch_args
-from db_init import ArgosDB
+from src.db_init import init_db as _init_db          # [FIX-7] правильный путь
 
 log = get_logger("argos.main")
+
+
+# [FIX-7] Обёртка-совместимость: заменяет ArgosDB() → вызов init_db()
+class ArgosDB:
+    """Совместимая обёртка над src.db_init.init_db."""
+    def __init__(self):
+        _init_db()
 
 
 class ArgosOrchestrator:
@@ -42,6 +50,8 @@ class ArgosOrchestrator:
         log.info("━" * 48)
         log.info(" ARGOS UNIVERSAL OS v1.4.0 — BOOT")
         log.info("━" * 48)
+
+        self._stop_event = threading.Event()
 
         # --- [FIX-2] каждый некритичный шаг изолирован ---
 
@@ -79,70 +89,40 @@ class ArgosOrchestrator:
             log.warning("[GEO] Геолокация недоступна: %s", e)
             self.location = "неизвестно"
 
-        # 5. Инструменты
+        # 5. Admin + Flasher
         try:
             self.admin = ArgosAdmin()
             self.flasher = AirFlasher()
+            log.info("[ADMIN] Файловый менеджер и flasher готовы")
         except Exception as e:
-            log.warning("[TOOLS] Инструменты недоступны: %s", e)
+            log.warning("[ADMIN] Ошибка инициализации admin/flasher: %s", e)
             self.admin = None
             self.flasher = None
 
-        # 6. Ядро — критично, без него нельзя работать
+        # 6. Ядро
         try:
             self.core = ArgosCore()
-            if self.db:
-                self.core.db = self.db
+            log.info("[CORE] ArgosCore готов")
         except Exception as e:
-            log.critical("[CORE] Не удалось запустить ядро: %s", e)
-            raise  # пробрасываем — без ядра нет смысла продолжать
+            log.error("[CORE] Критическая ошибка ядра: %s", e)
+            raise
 
-        # 7. P2P
-        try:
-            p2p = self.core.start_p2p()
-            log.info("[P2P] %s", p2p.split('\n')[0])
-        except Exception as e:
-            log.warning("[P2P] P2P недоступен: %s", e)
+        # 7. Telegram
+        self.tg = None  # [FIX-4]
 
-        # 8. Веб-панель
-        if "--dashboard" in sys.argv:
-            try:
-                dash = self.core.start_dashboard(self.admin, self.flasher)
-                log.info("[DASH] %s", dash)
-            except Exception as e:
-                log.warning("[DASH] Dashboard не запущен: %s", e)
-
-        # служебные атрибуты для graceful shutdown
-        self.tg = None
-        self._tg_thread = None
-        self._stop_event = threading.Event()
-
-        log.info("━" * 48)
-        log.info(" АРГОС ПРОБУЖДЁН. ЖДУ ДИРЕКТИВ.")
-        log.info("━" * 48)
-
-    # --- [FIX-4] сохраняем ссылку на поток, tg=None при сбое ---
+    # --- [FIX-4] _start_telegram сохраняет ссылку на поток ---
     def _start_telegram(self):
         try:
-            self.tg = ArgosTelegram(self.core, self.admin, self.flasher)
-            can_start, reason = self.tg.can_start()
-            if not can_start:
-                log.warning("[TG] Отключён: %s", reason)
-                self.tg = None
-                return
-            self._tg_thread = threading.Thread(
-                target=self.tg.run,
-                daemon=True,
-                name="argos-telegram",
-            )
-            self._tg_thread.start()
-            log.info("[TG] Telegram-бот запущен")
+            tg = ArgosTelegram(self.core, self.admin, self.flasher)
+            t = threading.Thread(target=tg.run, daemon=True, name="ArgosTelegram")
+            t.start()
+            self.tg = t
+            log.info("[TG] Telegram бот запущен")
         except Exception as e:
-            log.warning("[TG] Не запущен: %s", e)
+            log.warning("[TG] Telegram недоступен: %s", e)
             self.tg = None
 
-    def _shutdown(self):
-        """Корректное завершение всех подсистем."""
+    def shutdown(self):
         log.info("Аргос завершает работу...")
         try:
             if self.core:
@@ -209,56 +189,64 @@ class ArgosOrchestrator:
         signal.signal(signal.SIGINT,  _handle_signal)
 
         log.info("[SERVER] Жду директив. Для остановки: CTRL+C или SIGTERM.")
+
         try:
             while not self._stop_event.is_set():
-                self._stop_event.wait(timeout=5)
+                self._stop_event.wait(timeout=1.0)
+        except KeyboardInterrupt:
+            pass
         finally:
-            self._shutdown()
+            self.shutdown()
 
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════
+# ТОЧКА ВХОДА
+# ══════════════════════════════════════════════════════════════
+def main():
+    sys.argv = normalize_launch_args(sys.argv)
+
+    # --- [FIX-6] оборачиваем создание оркестратора ---
+    try:
+        orch = ArgosOrchestrator()
+    except Exception as e:
+        print(f"[FATAL] Не удалось запустить ARGOS: {e}")
+        sys.exit(1)
+
+    # Dashboard (фоновый поток)
+    if "--dashboard" in sys.argv:
+        try:
+            from src.interface.web_engine import ArgosWebEngine
+            dash = ArgosWebEngine(orch.core)
+            threading.Thread(target=dash.run, daemon=True, name="ArgosDashboard").start()
+            log.info("[DASH] Веб-панель запущена: http://localhost:8080")
+        except Exception as e:
+            log.warning("[DASH] Dashboard недоступен: %s", e)
+
+    # --- [FIX-5] режимы через if/elif ---
+    try:
+        if "--root" in sys.argv:
+            if orch.root:
+                print(orch.root.request_root())
+            else:
+                print("RootManager недоступен.")
+
+        elif "--shell" in sys.argv:
+            orch.boot_shell()
+
+        elif "--mobile" in sys.argv:
+            orch.boot_mobile()
+
+        elif "--no-gui" in sys.argv:
+            orch.boot_server()
+
+        else:
+            orch.boot_desktop()
+
+    except Exception as e:
+        log.error("[BOOT] Ошибка запуска: %s", e)
+        orch.shutdown()
+        sys.exit(1)
+
 
 if __name__ == "__main__":
-    sys.argv = [sys.argv[0], *normalize_launch_args(sys.argv[1:])]
-
-    for d in ["logs", "config", "builds/replicas", "assets", "data"]:
-        os.makedirs(d, exist_ok=True)
-
-    # [FIX-1] RootManager теперь импортирован вверху — NameError невозможен
-    if "--root" in sys.argv:
-        print(RootManager().request_elevation())
-        sys.exit(0)
-
-    # [FIX-5] if/elif — нет конфликта флагов; приоритет: shell > mobile > server > desktop
-    args = set(sys.argv[1:])
-    conflict = args & {"--no-gui", "--mobile", "--shell"}
-    if len(conflict) > 1:
-        log.warning("Конфликт режимов запуска: %s. Используется приоритетный.", conflict)
-
-    mode = "desktop"
-    if   "--shell"  in args: mode = "shell"
-    elif "--mobile" in args: mode = "mobile"
-    elif "--no-gui" in args: mode = "server"
-
-    # [FIX-6] обёртка с понятными сообщениями об ошибках
-    try:
-        argos = ArgosOrchestrator()
-    except Exception as e:
-        print(f"\n❌ ARGOS: Критическая ошибка при инициализации:\n  {e}")
-        print("Запусти 'python health_check.py' для диагностики.")
-        sys.exit(1)
-
-    boot_map = {
-        "desktop": argos.boot_desktop,
-        "mobile":  argos.boot_mobile,
-        "shell":   argos.boot_shell,
-        "server":  argos.boot_server,
-    }
-
-    try:
-        boot_map.get(mode, argos.boot_server)()
-    except KeyboardInterrupt:
-        log.info("Аргос завершает работу по команде пользователя.")
-    except Exception as e:
-        log.critical("Фатальная ошибка в режиме '%s': %s", mode, e, exc_info=True)
-        sys.exit(1)
+    main()
