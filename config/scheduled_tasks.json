@@ -11,6 +11,6 @@
     "type": "interval",
     "command": "статус системы",
     "interval_sec": 7200,
-    "last_run": 1773886133.954117
+    "last_run": 1773893354.7431562
   }
 ]
