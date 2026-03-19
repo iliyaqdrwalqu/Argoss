@@ -70,10 +70,12 @@ class ArgosTelegram:
         return True, "ok"
 
     # ── ПРОВЕРКА ДОСТУПА ──────────────────────────────────
-    def _auth(self, update: Update) -> bool:
-        if str(update.effective_user.id) != str(self.user_id):
-            return False
-        return True
+  def _auth(self, update: Update) -> bool:
+    user_id = str(update.effective_user.id)
+    # Проверяем, входит ли ID пользователя в наш список разрешенных
+    if user_id not in self.user_ids:
+        return False
+    return True
 
     # ── КОМАНДЫ ───────────────────────────────────────────
     def _control_keyboard(self) -> ReplyKeyboardMarkup:
