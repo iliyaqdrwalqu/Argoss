@@ -1,21 +1,21 @@
 # 👁️ ARGOS UNIVERSAL OS (v2.0.0)
 
-[![🔱 ARGOS Release v2.0.0](https://github.com/labuaqlysnecy/Argoss/actions/workflows/release_v2.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/release_v2.yml)
-[![CI](https://github.com/labuaqlysnecy/Argoss/actions/workflows/ci.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/ci.yml)
-[![Docker](https://github.com/labuaqlysnecy/Argoss/actions/workflows/docker.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/docker.yml)
-[![Android APK](https://github.com/labuaqlysnecy/Argoss/actions/workflows/android-apk.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/android-apk.yml)
-[![🖥️ Windows .exe](https://github.com/labuaqlysnecy/Argoss/actions/workflows/build_windows.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/build_windows.yml)
+[![🔱 ARGOS Release v2.0.0](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/release_v2.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/release_v2.yml)
+[![CI](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/ci.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/ci.yml)
+[![Docker](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/docker.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/docker.yml)
+[![Android APK](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/android-apk.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/android-apk.yml)
+[![🖥️ Windows .exe](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/build_windows.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/build_windows.yml)
 [![PyPI](https://img.shields.io/pypi/v/argos-universalsigtrip?color=blue&label=PyPI)](https://pypi.org/project/argos-universalsigtrip/)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://python.org)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/labuaqlysnecy/Argoss/blob/main/colab/ARGOS_Colab_Launch.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/iliyaqdrwalqu/Argoss/blob/main/colab/ARGOS_Colab_Launch.ipynb)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-production%20stable-brightgreen)](https://github.com/labuaqlysnecy/Argoss/releases/latest)
+[![Status](https://img.shields.io/badge/status-production%20stable-brightgreen)](https://github.com/iliyaqdrwalqu/Argoss/releases/latest)
 
-> **Docker image:** `ghcr.io/labuaqlysnecy/argoss:2.0.0` / `:latest`
+> **Docker image:** `ghcr.io/iliyaqdrwalqu/argoss:2.0.0` / `:latest`
 > — публикуется автоматически при каждом релизе.
 >
-> **Android APK:** скачать из [последнего релиза](https://github.com/labuaqlysnecy/Argoss/releases/latest)
-> или из [Actions → Android APK](https://github.com/labuaqlysnecy/Argoss/actions/workflows/android-apk.yml).
+> **Android APK:** скачать из [последнего релиза](https://github.com/iliyaqdrwalqu/Argoss/releases/latest)
+> или из [Actions → Android APK](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/android-apk.yml).
 >
 > **pip:** `pip install argos-universalsigtrip`
 
@@ -28,7 +28,7 @@
 ## ⚡ Быстрый старт (5 минут)
 
 ```bash
-git clone https://github.com/labuaqlysnecy/Argoss.git && cd Argoss
+git clone https://github.com/iliyaqdrwalqu/Argoss.git && cd Argoss
 pip install -r requirements.txt
 cp .env.example .env          # → вставь GEMINI_API_KEY
 python genesis.py             # инициализация

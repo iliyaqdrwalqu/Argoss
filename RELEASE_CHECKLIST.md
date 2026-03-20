@@ -133,7 +133,7 @@
   - *(PyPI не нужен — используется OIDC Trusted Publishing)*
 
 - [ ] Настроить Trusted Publisher на [pypi.org](https://pypi.org):
-  - Owner: `labuaqlysnecy`
+  - Owner: `iliyaqdrwalqu`
   - Repository: `Argoss`
   - Workflow: `release_v2.yml`
   - Environment: *(пусто)*
@@ -181,8 +181,8 @@ git push origin v2.0.0
 - [ ] Убедиться, что GitHub Release создан автоматически с нужными артефактами
 - [ ] Проверить, что Docker-образ опубликован на GHCR:
   ```bash
-  docker pull ghcr.io/labuaqlysnecy/argoss:2.0.0
-  docker pull ghcr.io/labuaqlysnecy/argoss:latest
+  docker pull ghcr.io/iliyaqdrwalqu/argoss:2.0.0
+  docker pull ghcr.io/iliyaqdrwalqu/argoss:latest
   ```
 - [ ] Проверить, что пакет появился на PyPI:
   ```bash

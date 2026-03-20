@@ -604,7 +604,7 @@ class ArgosGUI(ctk.CTk):
 
     def _copy_colab_url(self):
         url = ("https://colab.research.google.com/github/"
-               "labuaqlysnecy/Argoss/blob/main/argos_colab.ipynb")
+               "iliyaqdrwalqu/Argoss/blob/main/argos_colab.ipynb")
         try:
             self.clipboard_clear()
             self.clipboard_append(url)

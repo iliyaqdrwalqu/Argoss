@@ -41,12 +41,12 @@ echo "[+] Готово."
 
 # ── 5. Репозиторий ────────────────────────────────────
 REPO_DIR="Argoss"
-REPO_URL="https://github.com/labuaqlysnecy/Argoss.git"
+REPO_URL="https://github.com/iliyaqdrwalqu/Argoss.git"
 echo "[5/7] Репозиторий..."
 cd /content
 if [ ! -d "$REPO_DIR" ]; then
     if [ -n "$GITHUB_TOKEN" ]; then
-        git clone "https://${GITHUB_TOKEN}@github.com/labuaqlysnecy/Argoss.git" "$REPO_DIR"
+        git clone "https://${GITHUB_TOKEN}@github.com/iliyaqdrwalqu/Argoss.git" "$REPO_DIR"
     else
         git clone "$REPO_URL" "$REPO_DIR"
     fi
@@ -95,7 +95,7 @@ echo ""
 echo "[7/7] Аргос сканирует свою структуру..."
 # Копируем awareness.py если его нет
 if [ ! -f "awareness.py" ]; then
-    curl -s "https://raw.githubusercontent.com/labuaqlysnecy/Argoss/main/awareness.py" \
+    curl -s "https://raw.githubusercontent.com/iliyaqdrwalqu/Argoss/main/awareness.py" \
          -o awareness.py 2>/dev/null || true
 fi
 python3 awareness.py 2>/dev/null || python3 -c "

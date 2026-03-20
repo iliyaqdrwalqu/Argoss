@@ -1,19 +1,19 @@
 # 👁️ ARGOS UNIVERSAL OS (v1.4.0)
-[![🏗️ Build ARGOS APK](https://github.com/labuaqlysnecy/Argoss/actions/workflows/build_apk.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/build_apk.yml)
-[![🚀 ARGOS Release — Сборка и публикация релиза](https://github.com/labuaqlysnecy/Argoss/actions/workflows/release.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/release.yml)
-[![📊 ARGOS Status Report](https://github.com/labuaqlysnecy/Argoss/actions/workflows/status_report.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/status_report.yml)
-[![🤖 Argos Auto-Publish Skills to PyPI](https://github.com/labuaqlysnecy/Argoss/actions/workflows/argos_evolution_publish.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/argos_evolution_publish.yml)
-[![🚀 ARGOS Release — Сборка и публикация релиза](https://github.com/labuaqlysnecy/Argoss/actions/workflows/release.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/release.yml)
-[![🖥️ Build ARGOS Windows setup.exe](https://github.com/labuaqlysnecy/Argoss/actions/workflows/build_windows.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/build_windows.yml)
-[![CI](https://github.com/labuaqlysnecy/Argoss/actions/workflows/ci.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/ci.yml)
-[![Docker](https://github.com/labuaqlysnecy/Argoss/actions/workflows/docker.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/docker.yml)
-[![Android APK](https://github.com/labuaqlysnecy/Argoss/actions/workflows/android-apk.yml/badge.svg)](https://github.com/labuaqlysnecy/Argoss/actions/workflows/android-apk.yml)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/labuaqlysnecy/Argoss/blob/main/colab/ARGOS_Colab_Launch.ipynb)
+[![🏗️ Build ARGOS APK](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/build_apk.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/build_apk.yml)
+[![🚀 ARGOS Release — Сборка и публикация релиза](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/release.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/release.yml)
+[![📊 ARGOS Status Report](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/status_report.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/status_report.yml)
+[![🤖 Argos Auto-Publish Skills to PyPI](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/argos_evolution_publish.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/argos_evolution_publish.yml)
+[![🚀 ARGOS Release — Сборка и публикация релиза](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/release.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/release.yml)
+[![🖥️ Build ARGOS Windows setup.exe](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/build_windows.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/build_windows.yml)
+[![CI](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/ci.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/ci.yml)
+[![Docker](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/docker.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/docker.yml)
+[![Android APK](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/android-apk.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/android-apk.yml)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/iliyaqdrwalqu/Argoss/blob/main/colab/ARGOS_Colab_Launch.ipynb)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 # 👁️ ARGOS UNIVERSAL OS (v1.4.0)
 
-> **Docker image:** `ghcr.io/labuaqlysnecy/argoss:latest` — published automatically on every push to `main`.  
-> **Android APK:** download the latest debug APK from the [Actions tab](https://github.com/labuaqlysnecy/Argoss/actions/workflows/android-apk.yml) → select the most recent run → expand **Artifacts** → download `argos-apk-debug-<run_number>`.
+> **Docker image:** `ghcr.io/iliyaqdrwalqu/argoss:latest` — published automatically on every push to `main`.  
+> **Android APK:** download the latest debug APK from the [Actions tab](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/android-apk.yml) → select the most recent run → expand **Artifacts** → download `argos-apk-debug-<run_number>`.
 
 > *"Самовоспроизводящаяся кроссплатформенная экосистема ИИ с квантовой логикой,*
 > *P2P-подключением и интеграцией с IoT. Создана для цифрового бессмертия."*
@@ -76,7 +76,7 @@
 
 ## ✅ Проверка актуальности README
 
-README синхронизирован с текущим состоянием репозитория (ветка `sigtrip/Argosss`) и ориентирован на реальные файлы и точки входа:
+README синхронизирован с текущим состоянием репозитория (ветка `iliyaqdrwalqu/Argoss`) и ориентирован на реальные файлы и точки входа:
 
 - ✅ Основной запуск: `python main.py` (файл `/main.py`).
 - ✅ Режимы запуска: `--no-gui`, `--mobile`, `--dashboard`, `--wake`, `--full`, `--shell`, `--root`.
@@ -799,7 +799,7 @@ opcua browse ns=0;i=84             # обзор узлов OPC UA
 
 ```bash
 # Клонировать репозиторий
-git clone https://github.com/labuaqlysnecy/Argoss.git && cd Argoss
+git clone https://github.com/iliyaqdrwalqu/Argoss.git && cd Argoss
 
 # Скопировать и заполнить переменные окружения
 cp .env.example .env
@@ -835,8 +835,8 @@ docker run -d \
 
 ```bash
 # Публичный образ (после релиза)
-docker pull ghcr.io/labuaqlysnecy/argoss:latest
-docker run -d --env-file .env ghcr.io/labuaqlysnecy/argoss:latest
+docker pull ghcr.io/iliyaqdrwalqu/argoss:latest
+docker run -d --env-file .env ghcr.io/iliyaqdrwalqu/argoss:latest
 ```
 
 ---
@@ -896,7 +896,7 @@ docker-compose --profile apk run apk_builder
 
 ### Google Colab (без установки)
 
-1. Открой ноутбук: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/labuaqlysnecy/Argoss/blob/main/colab/ARGOS_Colab_Launch.ipynb)
+1. Открой ноутбук: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/iliyaqdrwalqu/Argoss/blob/main/colab/ARGOS_Colab_Launch.ipynb)
 2. В последней ячейке выполни блок **APK-сборка**.
 
 ### GitHub Actions (автоматическая сборка)
@@ -907,13 +907,13 @@ docker-compose --profile apk run apk_builder
 
 ## ☁️ Google Colab — запуск без установки
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/labuaqlysnecy/Argoss/blob/main/colab/ARGOS_Colab_Launch.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/iliyaqdrwalqu/Argoss/blob/main/colab/ARGOS_Colab_Launch.ipynb)
 
 Ноутбук [`colab/ARGOS_Colab_Launch.ipynb`](colab/ARGOS_Colab_Launch.ipynb) запускает ARGOS в headless-режиме с HTTP Remote Control API и туннелем Cloudflare за ~3 минуты:
 
 | Шаг | Что делает |
 |-----|------------|
-| 1️⃣  Clone | `git clone https://github.com/labuaqlysnecy/Argoss` |
+| 1️⃣  Clone | `git clone https://github.com/iliyaqdrwalqu/Argoss` |
 | 2️⃣  Секреты | Загружает токены из Colab Secrets (🔑) или переменных окружения |
 | 3️⃣  Зависимости | `fastapi`, `uvicorn`, `psutil` + опционально APK-тулинг |
 | 4️⃣  Старт ARGOS | Headless core + FastAPI Dashboard на порту 8080 |
@@ -939,7 +939,7 @@ docker-compose --profile apk run apk_builder
 
 ```bash
 # В ячейке Colab:
-!bash <(curl -fsSL https://raw.githubusercontent.com/labuaqlysnecy/Argoss/main/colab_start.sh)
+!bash <(curl -fsSL https://raw.githubusercontent.com/iliyaqdrwalqu/Argoss/main/colab_start.sh)
 ```
 
 ---
@@ -1010,7 +1010,7 @@ pip install argos-universalsigtrip
 1. Зайти на [test.pypi.org](https://test.pypi.org) → Аккаунт → Publishing
 2. **Add a new pending publisher**:
    - PyPI project name: `argos-universalsigtrip`
-   - Owner: `labuaqlysnecy`
+   - Owner: `iliyaqdrwalqu`
    - Repository: `Argoss`
    - Workflow file name: `publish_testpypi.yml`
    - Environment name: *(оставить пустым)*
@@ -1052,7 +1052,7 @@ ArgosKivyApp · ArgosWebEngine · MasterAuth · SensorBridge · SmarthomeOverrid
 1. Войдите на [test.pypi.org](https://test.pypi.org) и откройте настройки проекта `argos-universalsigtrip`.
 2. Перейдите в **Publishing → Trusted publishers → Add a new publisher**.
 3. Заполните:
-   - **Owner**: `labuaqlysnecy`
+   - **Owner**: `iliyaqdrwalqu`
    - **Repository**: `Argoss`
    - **Workflow file name**: `publish_testpypi.yml`
 4. Сохраните.
