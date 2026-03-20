@@ -1,8 +1,12 @@
 import os
 import asyncio
+import shlex
 import tempfile
 import subprocess
 from pathlib import Path
+from src.argos_logger import get_logger
+
+log = get_logger("argos.telegram")
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.error import InvalidToken, TelegramError
 from telegram.ext import (
@@ -15,12 +19,13 @@ HISTORY_MESSAGES_LIMIT = 10
 
 class ArgosTelegram:
     def __init__(self, core, admin, flasher):
-        self.core    = core
-        self.admin   = admin
-        self.flasher = flasher
-        self.token   = os.getenv("TELEGRAM_BOT_TOKEN")
-        self.user_id = os.getenv("USER_ID")
-        self.app     = None
+        self.core        = core
+        self.admin       = admin
+        self.flasher     = flasher
+        self.token       = os.getenv("TELEGRAM_BOT_TOKEN")
+        self.user_id     = os.getenv("USER_ID")
+        self.allowed_ids = {uid.strip() for uid in (os.getenv("USER_ID") or "").split(",") if uid.strip()}
+        self.app         = None
 
     def _find_apk_artifact(self) -> str | None:
         candidates = []
@@ -38,7 +43,7 @@ class ArgosTelegram:
             return False, "ARGOS_APK_BUILD_CMD не задан. Пример: buildozer -v android debug"
 
         try:
-            subprocess.run(cmd, shell=True, check=True)
+            subprocess.run(shlex.split(cmd), check=True)
         except subprocess.CalledProcessError as e:
             return False, f"Сборка APK завершилась с ошибкой: {e}"
         except Exception as e:
@@ -65,18 +70,14 @@ class ArgosTelegram:
             return False, "Токен не задан"
         if not self._looks_like_token(self.token):
             return False, "Формат токена некорректен"
-        if not self.user_id:
+        if not self.allowed_ids:
             return False, "USER_ID не задан"
         return True, "ok"
 
     # ── ПРОВЕРКА ДОСТУПА ──────────────────────────────────
     def _auth(self, update: Update) -> bool:
         """Проверяет доступ. USER_ID может содержать несколько ID через запятую: 123,456,789."""
-        user_id = str(update.effective_user.id)
-        allowed_ids = {uid.strip() for uid in (self.user_id or "").split(",") if uid.strip()}
-        if not allowed_ids:
-            return False
-        return user_id in allowed_ids
+        return str(update.effective_user.id) in self.allowed_ids
 
     # ── КОМАНДЫ ───────────────────────────────────────────
     def _control_keyboard(self) -> ReplyKeyboardMarkup:
@@ -439,7 +440,7 @@ class ArgosTelegram:
     def run(self):
         can_start, reason = self.can_start()
         if not can_start:
-            print(f"[TG-BRIDGE]: Telegram-мост отключён: {{reason}}.")
+            log.warning("[TG-BRIDGE]: Telegram-мост отключён: %s.", reason)
             return
 
         loop = asyncio.new_event_loop()
@@ -480,22 +481,22 @@ class ArgosTelegram:
         try:
             loop.run_until_complete(self.app.bot.get_me())
         except InvalidToken:
-            print("[TG-BRIDGE]: Telegram-мост отключён: токен отклонён сервером.")
+            log.error("[TG-BRIDGE]: Telegram-мост отключён: токен отклонён сервером.")
             return
         except TelegramError as e:
-            print(f"[TG-BRIDGE]: Telegram preflight error: {{e}}")
+            log.error("[TG-BRIDGE]: Telegram preflight error: %s", e)
             return
         except Exception as e:
-            print(f"[TG-BRIDGE]: Telegram preflight unexpected error: {{e}}")
+            log.error("[TG-BRIDGE]: Telegram preflight unexpected error: %s", e)
             return
 
-        _allowed = ", ".join(uid.strip() for uid in (self.user_id or "").split(",") if uid.strip())
-        print(f"[TG-BRIDGE]: Мост активен. Разрешённые USER_ID: [{_allowed}]")
+        _allowed = ", ".join(self.allowed_ids)
+        log.info("[TG-BRIDGE]: Мост активен. Разрешённые USER_ID: [%s]", _allowed)
         try:
             self.app.run_polling(close_loop=False, drop_pending_updates=True)
         except InvalidToken:
-            print("[TG-BRIDGE]: Telegram-мост отключён: токен отклонён сервером.")
+            log.error("[TG-BRIDGE]: Telegram-мост отключён: токен отклонён сервером.")
         except TelegramError as e:
-            print(f"[TG-BRIDGE]: Telegram error: {{e}}")
+            log.error("[TG-BRIDGE]: Telegram error: %s", e)
         except Exception as e:
-            print(f"[TG-BRIDGE]: Неожиданная ошибка Telegram-моста: {{e}}")
+            log.error("[TG-BRIDGE]: Неожиданная ошибка Telegram-моста: %s", e)

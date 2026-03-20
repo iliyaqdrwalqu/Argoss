@@ -46,6 +46,7 @@ def _make_bot(user_id: str = "42"):
     flasher = SimpleNamespace()
     bot = ArgosTelegram(core=core, admin=admin, flasher=flasher)
     bot.user_id = user_id
+    bot.allowed_ids = {uid.strip() for uid in user_id.split(",") if uid.strip()}
     return bot, core
 
 
