@@ -7,8 +7,8 @@ pack_archive.py — Сборка релизного ZIP-архива ARGOS
 баз данных, секретов и мусора.
 
 Использование:
-    python pack_archive.py                  # → releases/argos-v1.4.0.zip
-    python pack_archive.py --version 1.4.0  # → releases/argos-v1.4.0.zip
+    python pack_archive.py                  # → releases/argos-v2.0.0.zip
+    python pack_archive.py --version 2.0.0  # → releases/argos-v2.0.0.zip
     python pack_archive.py --output /tmp/my.zip
 """
 from __future__ import annotations
@@ -118,7 +118,7 @@ def build_archive(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="ARGOS release archive builder")
-    parser.add_argument("--version", default="1.4.0", help="Версия релиза (default: 1.4.0)")
+    parser.add_argument("--version", default="2.0.0", help="Версия релиза (default: 2.0.0)")
     parser.add_argument("--output", default=None, help="Путь к выходному ZIP-файлу")
     parser.add_argument("--root", default=".", help="Корень проекта (default: .)")
     args = parser.parse_args()
