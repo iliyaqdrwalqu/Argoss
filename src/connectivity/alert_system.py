@@ -111,16 +111,19 @@ class AlertSystem:
         return msg
 
     def _send_telegram(self, msg: str):
+        """Отправляет алерт всем получателям из USER_ID (поддерживает несколько ID через запятую)."""
         if not self._tg_token or not self._tg_chatid:
             return
-        try:
-            requests.post(
-                f"https://api.telegram.org/bot{self._tg_token}/sendMessage",
-                json={"chat_id": self._tg_chatid, "text": msg},
-                timeout=5,
-            )
-        except Exception as e:
-            log.error("Telegram alert send error: %s", e)
+        chat_ids = [uid.strip() for uid in str(self._tg_chatid).split(",") if uid.strip()]
+        for chat_id in chat_ids:
+            try:
+                requests.post(
+                    f"https://api.telegram.org/bot{self._tg_token}/sendMessage",
+                    json={"chat_id": chat_id, "text": msg},
+                    timeout=5,
+                )
+            except Exception as e:
+                log.error("Telegram alert send error (chat_id=%s): %s", chat_id, e)
 
     def set_threshold(self, metric: str, value: float) -> str:
         if metric not in THRESHOLDS:

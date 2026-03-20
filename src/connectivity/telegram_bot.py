@@ -71,11 +71,12 @@ class ArgosTelegram:
 
     # ── ПРОВЕРКА ДОСТУПА ──────────────────────────────────
     def _auth(self, update: Update) -> bool:
+        """Проверяет доступ. USER_ID может содержать несколько ID через запятую: 123,456,789."""
         user_id = str(update.effective_user.id)
-        # Проверяем, входит ли ID пользователя в наш список разрешенных
-        if user_id != self.user_id:
+        allowed_ids = {uid.strip() for uid in (self.user_id or "").split(",") if uid.strip()}
+        if not allowed_ids:
             return False
-        return True
+        return user_id in allowed_ids
 
     # ── КОМАНДЫ ───────────────────────────────────────────
     def _control_keyboard(self) -> ReplyKeyboardMarkup:
@@ -488,7 +489,8 @@ class ArgosTelegram:
             print(f"[TG-BRIDGE]: Telegram preflight unexpected error: {{e}}")
             return
 
-        print(f"[TG-BRIDGE]: Мост активен. USER_ID={{self.user_id}}")
+        _allowed = ", ".join(uid.strip() for uid in (self.user_id or "").split(",") if uid.strip())
+        print(f"[TG-BRIDGE]: Мост активен. Разрешённые USER_ID: [{_allowed}]")
         try:
             self.app.run_polling(close_loop=False, drop_pending_updates=True)
         except InvalidToken:
