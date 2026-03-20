@@ -56,6 +56,41 @@ def test_auth_rejects_non_owner_user():
     assert bot._auth(update) is False
 
 
+def test_auth_accepts_first_of_multiple_ids():
+    """USER_ID=42,99 — пользователь 42 должен проходить."""
+    bot, _ = _make_bot(user_id="42,99")
+    update = SimpleNamespace(effective_user=SimpleNamespace(id=42))
+    assert bot._auth(update) is True
+
+
+def test_auth_accepts_second_of_multiple_ids():
+    """USER_ID=42,99 — пользователь 99 должен проходить."""
+    bot, _ = _make_bot(user_id="42,99")
+    update = SimpleNamespace(effective_user=SimpleNamespace(id=99))
+    assert bot._auth(update) is True
+
+
+def test_auth_rejects_unlisted_user_with_multiple_ids():
+    """USER_ID=42,99 — пользователь 100 должен быть заблокирован."""
+    bot, _ = _make_bot(user_id="42,99")
+    update = SimpleNamespace(effective_user=SimpleNamespace(id=100))
+    assert bot._auth(update) is False
+
+
+def test_auth_rejects_when_user_id_empty():
+    """USER_ID='' — никто не должен проходить."""
+    bot, _ = _make_bot(user_id="")
+    update = SimpleNamespace(effective_user=SimpleNamespace(id=42))
+    assert bot._auth(update) is False
+
+
+def test_auth_handles_spaces_in_user_id():
+    """USER_ID='42 , 99' — пробелы вокруг ID должны игнорироваться."""
+    bot, _ = _make_bot(user_id="42 , 99")
+    update = SimpleNamespace(effective_user=SimpleNamespace(id=99))
+    assert bot._auth(update) is True
+
+
 def test_cmd_history_uses_fixed_recent_limit():
     async def _run():
         bot, core = _make_bot(user_id="42")
