@@ -1,4 +1,4 @@
-# 👁️ ARGOS UNIVERSAL OS (v1.4.0)
+# 👁️ ARGOS UNIVERSAL OS (v2.0.0)
 [![🏗️ Build ARGOS APK](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/build_apk.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/build_apk.yml)
 [![🚀 ARGOS Release — Сборка и публикация релиза](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/release.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/release.yml)
 [![📊 ARGOS Status Report](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/status_report.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/status_report.yml)
@@ -10,7 +10,7 @@
 [![Android APK](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/android-apk.yml/badge.svg)](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/android-apk.yml)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/iliyaqdrwalqu/Argoss/blob/main/colab/ARGOS_Colab_Launch.ipynb)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-# 👁️ ARGOS UNIVERSAL OS (v1.4.0)
+# 👁️ ARGOS UNIVERSAL OS (v2.0.0)
 
 > **Docker image:** `ghcr.io/iliyaqdrwalqu/argoss:latest` — published automatically on every push to `main`.  
 > **Android APK:** download the latest debug APK from the [Actions tab](https://github.com/iliyaqdrwalqu/Argoss/actions/workflows/android-apk.yml) → select the most recent run → expand **Artifacts** → download `argos-apk-debug-<run_number>`.
@@ -1028,7 +1028,7 @@ pip install argos-universalsigtrip
 
 ---
 
-## 📊 Аудит v1.4.0
+## 📊 Аудит v2.0.0
 
 ```
 88 модулей Python · 88/88 импортов ✅
