@@ -5,7 +5,7 @@
 #define AppName      "ARGOS Absolute"
 #define AppVersion   "1.33.0"
 #define AppPublisher "sigtrip"
-#define AppURL       "https://github.com/sigtrip/Argosss"
+#define AppURL       "https://github.com/iliyaqdrwalqu/Argoss"
 #define AppExeName   "ARGOS.exe"
 ; PyInstaller outputs the exe one directory above this script
 #define DistDir      "..\dist"

@@ -66,11 +66,11 @@ all = [
 argos = "main:main"
 
 [project.urls]
-Homepage = "https://github.com/labuaqlysnecy/Argoss"
-Repository = "https://github.com/labuaqlysnecy/Argoss"
-Changelog = "https://github.com/labuaqlysnecy/Argoss/blob/main/CHANGELOG.md"
-"Bug Tracker" = "https://github.com/labuaqlysnecy/Argoss/issues"
-Documentation = "https://github.com/labuaqlysnecy/Argoss/blob/main/docs/index.md"
+Homepage = "https://github.com/iliyaqdrwalqu/Argoss"
+Repository = "https://github.com/iliyaqdrwalqu/Argoss"
+Changelog = "https://github.com/iliyaqdrwalqu/Argoss/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/iliyaqdrwalqu/Argoss/issues"
+Documentation = "https://github.com/iliyaqdrwalqu/Argoss/blob/main/docs/index.md"
 
 [tool.setuptools.packages.find]
 where = ["."]

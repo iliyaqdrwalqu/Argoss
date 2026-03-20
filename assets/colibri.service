@@ -1,6 +1,6 @@
 [Unit]
 Description=Colibri Daemon — Argos WhisperNode P2P service
-Documentation=https://github.com/sigtrip/Argosss
+Documentation=https://github.com/iliyaqdrwalqu/Argoss
 After=network.target
 
 [Service]

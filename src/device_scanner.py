@@ -790,8 +790,8 @@ class AdaptiveImageBuilder:
             "Android Boot Guide — Argos OS\n\n"
             "1. Установи Termux (F-Droid)\n"
             "2. pkg install python git\n"
-            "3. git clone https://github.com/sigtrip/Argosss\n"
-            "4. cd Argosss && pip install -r requirements.txt\n"
+            "3. git clone https://github.com/iliyaqdrwalqu/Argoss\n"
+            "4. cd Argoss && pip install -r requirements.txt\n"
             "5. python main.py --no-gui\n\n"
             "Для прошивки через fastboot: см. AndroidFlasher\n"
         )
