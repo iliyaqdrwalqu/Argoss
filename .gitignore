@@ -20,3 +20,6 @@ config/node_birth
 logs/
 .DS_Store
 builds/
+releases/
+argos_patch_*.zip
+files.zip

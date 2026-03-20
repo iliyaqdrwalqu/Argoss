@@ -1,1 +1,1 @@
-"""Legacy GUI files — kept for reference only."""
+"""Legacy GUI files â€” kept for reference only."""

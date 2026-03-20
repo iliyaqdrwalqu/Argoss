@@ -62,3 +62,38 @@
 - Тесты (покрытие ~14%, цель 30%+)
 - Документация и примеры сценариев
 - Оптимизация Speculative Consensus pipeline
+
+## 🧪 Запуск тестов
+
+```bash
+# Быстрый запуск (рекомендуется)
+make test
+
+# Или напрямую через pytest
+pytest tests/ -q --tb=short
+
+# С покрытием кода
+pytest tests/ --cov=src --cov-report=term-missing
+```
+
+## 🔧 Перед коммитом (обязательно)
+
+```bash
+# 1. Исправить кодировку
+make fix-encoding
+
+# 2. Проверить синтаксис
+find . -name "*.py" ! -path "*/venv/*" ! -path "*/__pycache__/*" -exec python3 -m py_compile {} +
+
+# 3. Запустить тесты
+make test
+```
+
+## 📋 Стандарты кода
+
+- Python 3.10+
+- Форматирование: `black` (max line length 120)
+- Линтер: `flake8 --max-line-length=120`  
+- Логирование: использовать `from src.argos_logger import get_logger`, **не** `print()`
+- Никаких хардкоженных секретов в коде
+- Все новые функции — с docstring
