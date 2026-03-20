@@ -20,6 +20,10 @@ import os
 import sys
 from typing import Any, Dict, List, Type
 
+from src.argos_logger import get_logger
+
+_log = get_logger("argos.auto_integrator")
+
 # ─────────────────────────────────────────────────
 # Интерфейс IModule
 # ─────────────────────────────────────────────────
@@ -258,12 +262,12 @@ def run_integrator(host: str = "0.0.0.0", port: int = 8080) -> None:
 
     scanner = ModuleScanner()
     modules = scanner.scan()
-    print(f"🔱 AutoIntegrator: найдено модулей: {len(modules)}")
+    _log.info("AutoIntegrator: найдено модулей: %d", len(modules))
     for name in modules:
-        print(f"   • {name}")
+        _log.info("   • %s", name)
 
     app = build_app(modules)
-    print(f"🌐 Запуск на http://{host}:{port}")
+    _log.info("Запуск на http://%s:%d", host, port)
     uvicorn.run(app, host=host, port=port)
 
 

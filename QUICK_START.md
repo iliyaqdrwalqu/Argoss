@@ -281,3 +281,26 @@ python main.py --no-gui
 ```bash
 pip install -r requirements.txt
 ```
+
+### `unicode error 'utf-8' codec can't decode byte`
+```bash
+python3 fix_encoding.py
+```
+
+### `SyntaxError` после исправления кодировки
+```bash
+python3 -m py_compile path/to/file.py
+```
+
+### Скрипты не находят проект (запуск из другой директории)
+```bash
+python3 fix_encoding.py /full/path/to/project
+```
+
+### Быстрое создание `src/interface/legacy/__init__.py`
+```python
+from pathlib import Path
+target = Path("./src/interface/legacy/__init__.py")
+target.parent.mkdir(parents=True, exist_ok=True)
+target.write_text('"""Legacy GUI files — kept for reference only."""\n', encoding="utf-8")
+```

@@ -21,5 +21,6 @@ logs/
 .DS_Store
 builds/
 releases/
+venv/
 argos_patch_*.zip
 files.zip
