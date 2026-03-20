@@ -31,10 +31,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-import logging
-
-def get_logger(name: str) -> logging.Logger:
-    return logging.getLogger(name)
+from src.argos_logger import get_logger
 
 log = get_logger("argos.model")
 
