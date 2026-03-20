@@ -260,3 +260,24 @@ file src/interface/legacy/__init__.py
 ---
 
 🎉 **Успешной подготовки к релизу!**
+
+## 🆘 Частые проблемы
+
+### `UnicodeDecodeError: 'utf-8' codec can't decode byte 0x97`
+```bash
+python3 quick_fix.py
+python3 fix_encoding.py .
+```
+
+### `ModuleNotFoundError: No module named 'src.core'`
+Убедись что запускаешь из корня репозитория:
+```bash
+cd /path/to/Argoss
+python main.py --no-gui
+```
+
+### Тесты падают с `ImportError`
+Установить зависимости:
+```bash
+pip install -r requirements.txt
+```
